@@ -1,0 +1,223 @@
+local G2L = {};
+
+-- Verificação de duplicata para evitar erros de execução múltipla
+if getgenv().custom_chat_loaded then
+	warn("O Script já está rodando.")
+	return
+end
+getgenv().custom_chat_loaded = true
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local Player = Players.LocalPlayer
+
+-- UI PRINCIPAL (SCREEN GUI)
+G2L.ScreenGui = Instance.new("ScreenGui")
+G2L.ScreenGui.Name = "GlobalChat_WhiteEdition_Large"
+G2L.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+G2L.ScreenGui.ResetOnSpawn = false
+G2L.ScreenGui.Parent = game:GetService("CoreGui")
+
+-- BOTÃO DE ABRIR/FECHAR (APENAS A IMAGEM - ARRASTÁVEL)
+G2L.ToggleButton = Instance.new("ImageButton")
+G2L.ToggleButton.Name = "ToggleChat"
+G2L.ToggleButton.Size = UDim2.new(0, 80, 0, 80)
+G2L.ToggleButton.Position = UDim2.new(0.05, 0, 0.4, 0)
+G2L.ToggleButton.BackgroundTransparency = 1 
+G2L.ToggleButton.Image = "rbxassetid://97871383060109"
+G2L.ToggleButton.Parent = G2L.ScreenGui
+
+-- JANELA PRINCIPAL
+G2L.Main = Instance.new("Frame")
+G2L.Main.Name = "MainFrame"
+G2L.Main.Size = UDim2.new(0, 450, 0, 300)
+G2L.Main.Position = UDim2.new(0.5, -225, 0.5, -150)
+G2L.Main.BackgroundColor3 = Color3.fromRGB(2, 10, 18)
+G2L.Main.BackgroundTransparency = 0.1
+G2L.Main.BorderSizePixel = 0
+G2L.Main.Visible = true
+G2L.Main.Parent = G2L.ScreenGui
+
+-- IMAGEM CENTRALIZADA (LOGO)
+G2L.BgImage = Instance.new("ImageLabel")
+G2L.BgImage.Name = "CentralLogo"
+G2L.BgImage.Size = UDim2.new(0, 220, 0, 220)
+G2L.BgImage.Position = UDim2.new(0.5, -110, 0.5, -110)
+G2L.BgImage.BackgroundTransparency = 1
+G2L.BgImage.Image = "rbxassetid://130275641191868"
+G2L.BgImage.ImageTransparency = 0.85
+G2L.BgImage.ZIndex = 1
+G2L.BgImage.Parent = G2L.Main
+
+G2L.MainCorner = Instance.new("UICorner")
+G2L.MainCorner.Parent = G2L.Main
+
+-- BORDAS BRANCAS
+G2L.MainStroke = Instance.new("UIStroke")
+G2L.MainStroke.Color = Color3.fromRGB(255, 255, 255)
+G2L.MainStroke.Thickness = 2
+G2L.MainStroke.Parent = G2L.Main
+
+-- TOPBAR E ABAS
+G2L.TopBar = Instance.new("Frame")
+G2L.TopBar.Size = UDim2.new(1, 0, 0, 40)
+G2L.TopBar.BackgroundTransparency = 1
+G2L.TopBar.ZIndex = 5
+G2L.TopBar.Parent = G2L.Main
+
+local function CriarAba(nome, pos)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.333, 0, 1, 0)
+    btn.Position = UDim2.new(pos, 0, 0, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = nome
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 18 -- Texto das abas levemente maior
+    btn.ZIndex = 6
+    btn.Parent = G2L.TopBar
+    
+    local line = Instance.new("Frame")
+    line.Size = UDim2.new(1, -10, 0, 2)
+    line.Position = UDim2.new(0, 5, 1, -2)
+    line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    line.Visible = (nome == "[Servidor]")
+    line.Parent = btn
+    
+    return btn
+end
+
+G2L.TabServer = CriarAba("[Servidor]", 0)
+G2L.TabTeam = CriarAba("[Team]", 0.333)
+G2L.TabFriends = CriarAba("[Friends]", 0.666)
+
+-- HISTÓRICO DE CHAT
+G2L.ChatHistory = Instance.new("ScrollingFrame")
+G2L.ChatHistory.Size = UDim2.new(1, -20, 1, -110)
+G2L.ChatHistory.Position = UDim2.new(0, 10, 0, 50)
+G2L.ChatHistory.BackgroundTransparency = 1
+G2L.ChatHistory.ZIndex = 5
+G2L.ChatHistory.ScrollBarThickness = 4
+G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, 0)
+G2L.ChatHistory.Parent = G2L.Main
+
+G2L.Layout = Instance.new("UIListLayout")
+G2L.Layout.Padding = UDim.new(0, 6) -- Mais espaço entre mensagens grandes
+G2L.Layout.SortOrder = Enum.SortOrder.LayoutOrder
+G2L.Layout.Parent = G2L.ChatHistory
+
+-- BARRA DE DIGITAÇÃO
+G2L.BottomBar = Instance.new("Frame")
+G2L.BottomBar.Size = UDim2.new(1, -20, 0, 45)
+G2L.BottomBar.Position = UDim2.new(0, 10, 1, -55)
+G2L.BottomBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+G2L.BottomBar.BackgroundTransparency = 0.5
+G2L.BottomBar.ZIndex = 5
+G2L.BottomBar.Parent = G2L.Main
+
+G2L.Input = Instance.new("TextBox")
+G2L.Input.Size = UDim2.new(1, -80, 1, 0)
+G2L.Input.Position = UDim2.new(0, 10, 0, 0)
+G2L.Input.BackgroundTransparency = 1
+G2L.Input.TextColor3 = Color3.fromRGB(255, 255, 255)
+G2L.Input.PlaceholderText = "Click here to chat..."
+G2L.Input.TextXAlignment = Enum.TextXAlignment.Left
+G2L.Input.Text = ""
+G2L.Input.TextSize = 18 -- Input maior para facilitar leitura ao digitar
+G2L.Input.ZIndex = 6
+G2L.Input.Parent = G2L.BottomBar
+
+G2L.SendBtn = Instance.new("ImageButton")
+G2L.SendBtn.Size = UDim2.new(0, 25, 0, 25)
+G2L.SendBtn.Position = UDim2.new(1, -35, 0.5, -12)
+G2L.SendBtn.BackgroundTransparency = 1
+G2L.SendBtn.Image = "rbxassetid://18940312887"
+G2L.SendBtn.ZIndex = 6
+G2L.SendBtn.Parent = G2L.BottomBar
+
+-- LÓGICA DE ARRASTAR (DRAG SYSTEM)
+local function MakeDraggable(obj)
+    local dragging, dragInput, dragStart, startPos
+    local function update(input)
+        local delta = input.Position - dragStart
+        obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+    obj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = obj.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    obj.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then update(input) end
+    end)
+end
+
+MakeDraggable(G2L.Main)
+MakeDraggable(G2L.ToggleButton)
+
+G2L.ToggleButton.MouseButton1Click:Connect(function()
+	G2L.Main.Visible = not G2L.Main.Visible
+end)
+
+-- LÓGICA DO WEBSOCKET
+local function StartNetwork()
+    local socket
+    local key = "eLudeCBiiTiQSr6DWJPMPfpZK9B6ghEu90ZbJwzm"
+    
+    local success, _ = pcall(function()
+        socket = WebSocket.connect("wss://free.blr2.piesocket.com/v3/1?api_key="..key.."&notify_self=1")
+    end)
+
+    if socket then
+        socket.OnMessage:Connect(function(msg)
+            local data = HttpService:JSONDecode(msg)
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 0, 30) -- Aumentado para acomodar texto maior
+            label.BackgroundTransparency = 1
+            label.RichText = true
+            label.Font = Enum.Font.SourceSansBold
+            label.TextColor3 = Color3.fromRGB(255, 255, 255)
+            label.TextSize = 22 -- MENSAGENS BEM GRANDES E LEGÍVEIS
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            -- Uso do DisplayName enviado no JSON
+            label.Text = string.format("<font color='#ffffff'>[%s]:</font> %s", data.nickname or data.username, data.message)
+            label.AutomaticSize = Enum.AutomaticSize.Y
+            label.TextWrapped = true
+            label.ZIndex = 7
+            label.Parent = G2L.ChatHistory
+            G2L.ChatHistory.CanvasPosition = Vector2.new(0, G2L.Layout.AbsoluteContentSize.Y)
+        end)
+
+        local function enviar()
+            if G2L.Input.Text ~= "" then
+                -- Enviando o DisplayName (Nick) em vez do Username apenas
+                socket:Send(HttpService:JSONEncode({
+                    username = Player.Name, 
+                    nickname = Player.DisplayName, 
+                    message = G2L.Input.Text
+                }))
+                G2L.Input.Text = ""
+            end
+        end
+
+        G2L.SendBtn.MouseButton1Click:Connect(enviar)
+        G2L.Input.FocusLost:Connect(function(enter) if enter then enviar() end end)
+    end
+end
+
+task.spawn(StartNetwork)
+
+G2L.Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, G2L.Layout.AbsoluteContentSize.Y + 10)
+end)
+
+return G2L.ScreenGui
