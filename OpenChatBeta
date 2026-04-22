@@ -2,24 +2,25 @@ local G2L = {};
 
 -- Verificação de duplicata para evitar erros de execução múltipla
 if getgenv().custom_chat_loaded then
-	warn("O Script já está rodando.")
-	return
+    warn("O Script já está rodando.")
+    return
 end
 getgenv().custom_chat_loaded = true
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
+local ChatService = game:GetService("Chat") -- Serviço para as nuvens de chat
 local Player = Players.LocalPlayer
 
 -- UI PRINCIPAL (SCREEN GUI)
 G2L.ScreenGui = Instance.new("ScreenGui")
-G2L.ScreenGui.Name = "GlobalChat_WhiteEdition_Large"
+G2L.ScreenGui.Name = "GlobalChat_WhiteEdition_Final"
 G2L.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 G2L.ScreenGui.ResetOnSpawn = false
 G2L.ScreenGui.Parent = game:GetService("CoreGui")
 
--- BOTÃO DE ABRIR/FECHAR (APENAS A IMAGEM - ARRASTÁVEL)
+-- BOTÃO DE ABRIR/FECHAR (ARRASTÁVEL)
 G2L.ToggleButton = Instance.new("ImageButton")
 G2L.ToggleButton.Name = "ToggleChat"
 G2L.ToggleButton.Size = UDim2.new(0, 80, 0, 80)
@@ -39,7 +40,7 @@ G2L.Main.BorderSizePixel = 0
 G2L.Main.Visible = true
 G2L.Main.Parent = G2L.ScreenGui
 
--- IMAGEM CENTRALIZADA (LOGO)
+-- LOGO CENTRALIZADA
 G2L.BgImage = Instance.new("ImageLabel")
 G2L.BgImage.Name = "CentralLogo"
 G2L.BgImage.Size = UDim2.new(0, 220, 0, 220)
@@ -74,17 +75,17 @@ local function CriarAba(nome, pos)
     btn.Text = nome
     btn.Font = Enum.Font.SourceSansBold
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 18 -- Texto das abas levemente maior
+    btn.TextSize = 18
     btn.ZIndex = 6
     btn.Parent = G2L.TopBar
-    
+
     local line = Instance.new("Frame")
     line.Size = UDim2.new(1, -10, 0, 2)
     line.Position = UDim2.new(0, 5, 1, -2)
     line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     line.Visible = (nome == "[Servidor]")
     line.Parent = btn
-    
+
     return btn
 end
 
@@ -103,7 +104,7 @@ G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, 0)
 G2L.ChatHistory.Parent = G2L.Main
 
 G2L.Layout = Instance.new("UIListLayout")
-G2L.Layout.Padding = UDim.new(0, 6) -- Mais espaço entre mensagens grandes
+G2L.Layout.Padding = UDim.new(0, 6)
 G2L.Layout.SortOrder = Enum.SortOrder.LayoutOrder
 G2L.Layout.Parent = G2L.ChatHistory
 
@@ -124,7 +125,7 @@ G2L.Input.TextColor3 = Color3.fromRGB(255, 255, 255)
 G2L.Input.PlaceholderText = "Click here to chat..."
 G2L.Input.TextXAlignment = Enum.TextXAlignment.Left
 G2L.Input.Text = ""
-G2L.Input.TextSize = 18 -- Input maior para facilitar leitura ao digitar
+G2L.Input.TextSize = 18 
 G2L.Input.ZIndex = 6
 G2L.Input.Parent = G2L.BottomBar
 
@@ -165,14 +166,14 @@ MakeDraggable(G2L.Main)
 MakeDraggable(G2L.ToggleButton)
 
 G2L.ToggleButton.MouseButton1Click:Connect(function()
-	G2L.Main.Visible = not G2L.Main.Visible
+    G2L.Main.Visible = not G2L.Main.Visible
 end)
 
--- LÓGICA DO WEBSOCKET
+-- LÓGICA DO WEBSOCKET COM SINCRONIZAÇÃO DE BALÕES
 local function StartNetwork()
     local socket
     local key = "eLudeCBiiTiQSr6DWJPMPfpZK9B6ghEu90ZbJwzm"
-    
+
     local success, _ = pcall(function()
         socket = WebSocket.connect("wss://free.blr2.piesocket.com/v3/1?api_key="..key.."&notify_self=1")
     end)
@@ -180,30 +181,39 @@ local function StartNetwork()
     if socket then
         socket.OnMessage:Connect(function(msg)
             local data = HttpService:JSONDecode(msg)
+            
+            -- 1. CRIAR MENSAGEM NA INTERFACE (TAMANHO 19)
             local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, 0, 0, 30) -- Aumentado para acomodar texto maior
+            label.Size = UDim2.new(1, 0, 0, 25)
             label.BackgroundTransparency = 1
             label.RichText = true
             label.Font = Enum.Font.SourceSansBold
             label.TextColor3 = Color3.fromRGB(255, 255, 255)
-            label.TextSize = 22 -- MENSAGENS BEM GRANDES E LEGÍVEIS
+            label.TextSize = 19 -- TAMANHO SOLICITADO
             label.TextXAlignment = Enum.TextXAlignment.Left
-            -- Uso do DisplayName enviado no JSON
             label.Text = string.format("<font color='#ffffff'>[%s]:</font> %s", data.nickname or data.username, data.message)
             label.AutomaticSize = Enum.AutomaticSize.Y
             label.TextWrapped = true
             label.ZIndex = 7
             label.Parent = G2L.ChatHistory
             G2L.ChatHistory.CanvasPosition = Vector2.new(0, G2L.Layout.AbsoluteContentSize.Y)
+
+            -- 2. SINCRONIZAÇÃO DE BALÃO (BUBBLE SYNC)
+            -- Procura se o dono da mensagem está no mesmo servidor
+            local TargetPlayer = Players:FindFirstChild(data.username)
+            if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("Head") then
+                ChatService:Chat(TargetPlayer.Character.Head, data.message, Enum.ChatColor.White)
+            end
         end)
 
         local function enviar()
-            if G2L.Input.Text ~= "" then
-                -- Enviando o DisplayName (Nick) em vez do Username apenas
+            local msgText = G2L.Input.Text
+            if msgText ~= "" then
+                -- Envia para o servidor global (os balões serão gerados pelo OnMessage acima)
                 socket:Send(HttpService:JSONEncode({
                     username = Player.Name, 
                     nickname = Player.DisplayName, 
-                    message = G2L.Input.Text
+                    message = msgText
                 }))
                 G2L.Input.Text = ""
             end
@@ -216,6 +226,7 @@ end
 
 task.spawn(StartNetwork)
 
+-- AJUSTE DINÂMICO DO SCROLL
 G2L.Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, G2L.Layout.AbsoluteContentSize.Y + 10)
 end)
