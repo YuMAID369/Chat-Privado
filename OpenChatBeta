@@ -1,26 +1,26 @@
 local G2L = {};
 
--- Verificação de duplicata para evitar erros de execução múltipla
+-- Prevenção de execução dupla
 if getgenv().custom_chat_loaded then
-    warn("O Script já está rodando.")
-    return
+    warn("Limpando execução anterior...")
+    getgenv().custom_chat_loaded = nil
 end
 getgenv().custom_chat_loaded = true
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
-local ChatService = game:GetService("Chat") -- Serviço para as nuvens de chat
+local ChatService = game:GetService("Chat") 
+local StarterGui = game:GetService("StarterGui")
 local Player = Players.LocalPlayer
 
--- UI PRINCIPAL (SCREEN GUI)
+-- UI PRINCIPAL (RESTAURANDO O MODELO COM ABAS)
 G2L.ScreenGui = Instance.new("ScreenGui")
-G2L.ScreenGui.Name = "GlobalChat_WhiteEdition_Final"
+G2L.ScreenGui.Name = "GlobalChat_WhiteEdition_Full"
 G2L.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 G2L.ScreenGui.ResetOnSpawn = false
 G2L.ScreenGui.Parent = game:GetService("CoreGui")
 
--- BOTÃO DE ABRIR/FECHAR (ARRASTÁVEL)
 G2L.ToggleButton = Instance.new("ImageButton")
 G2L.ToggleButton.Name = "ToggleChat"
 G2L.ToggleButton.Size = UDim2.new(0, 80, 0, 80)
@@ -29,38 +29,25 @@ G2L.ToggleButton.BackgroundTransparency = 1
 G2L.ToggleButton.Image = "rbxassetid://97871383060109"
 G2L.ToggleButton.Parent = G2L.ScreenGui
 
--- JANELA PRINCIPAL
 G2L.Main = Instance.new("Frame")
 G2L.Main.Name = "MainFrame"
-G2L.Main.Size = UDim2.new(0, 450, 0, 300)
-G2L.Main.Position = UDim2.new(0.5, -225, 0.5, -150)
+G2L.Main.Size = UDim2.new(0, 450, 0, 320) -- Um pouco maior para caber a TopBar
+G2L.Main.Position = UDim2.new(0.5, -225, 0.5, -160)
 G2L.Main.BackgroundColor3 = Color3.fromRGB(2, 10, 18)
 G2L.Main.BackgroundTransparency = 0.1
 G2L.Main.BorderSizePixel = 0
 G2L.Main.Visible = true
 G2L.Main.Parent = G2L.ScreenGui
 
--- LOGO CENTRALIZADA
-G2L.BgImage = Instance.new("ImageLabel")
-G2L.BgImage.Name = "CentralLogo"
-G2L.BgImage.Size = UDim2.new(0, 220, 0, 220)
-G2L.BgImage.Position = UDim2.new(0.5, -110, 0.5, -110)
-G2L.BgImage.BackgroundTransparency = 1
-G2L.BgImage.Image = "rbxassetid://130275641191868"
-G2L.BgImage.ImageTransparency = 0.85
-G2L.BgImage.ZIndex = 1
-G2L.BgImage.Parent = G2L.Main
-
 G2L.MainCorner = Instance.new("UICorner")
 G2L.MainCorner.Parent = G2L.Main
 
--- BORDAS BRANCAS
 G2L.MainStroke = Instance.new("UIStroke")
 G2L.MainStroke.Color = Color3.fromRGB(255, 255, 255)
 G2L.MainStroke.Thickness = 2
 G2L.MainStroke.Parent = G2L.Main
 
--- TOPBAR E ABAS
+-- TOPBAR (ABAS: SERVIDOR, TEAM, FRIENDS)
 G2L.TopBar = Instance.new("Frame")
 G2L.TopBar.Size = UDim2.new(1, 0, 0, 40)
 G2L.TopBar.BackgroundTransparency = 1
@@ -78,14 +65,13 @@ local function CriarAba(nome, pos)
     btn.TextSize = 18
     btn.ZIndex = 6
     btn.Parent = G2L.TopBar
-
+    
     local line = Instance.new("Frame")
     line.Size = UDim2.new(1, -10, 0, 2)
     line.Position = UDim2.new(0, 5, 1, -2)
     line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    line.Visible = (nome == "[Servidor]")
+    line.Visible = (nome == "[Servidor]") -- Apenas a primeira ativa por padrão
     line.Parent = btn
-
     return btn
 end
 
@@ -93,12 +79,11 @@ G2L.TabServer = CriarAba("[Servidor]", 0)
 G2L.TabTeam = CriarAba("[Team]", 0.333)
 G2L.TabFriends = CriarAba("[Friends]", 0.666)
 
--- HISTÓRICO DE CHAT
+-- HISTÓRICO
 G2L.ChatHistory = Instance.new("ScrollingFrame")
-G2L.ChatHistory.Size = UDim2.new(1, -20, 1, -110)
+G2L.ChatHistory.Size = UDim2.new(1, -20, 1, -120)
 G2L.ChatHistory.Position = UDim2.new(0, 10, 0, 50)
 G2L.ChatHistory.BackgroundTransparency = 1
-G2L.ChatHistory.ZIndex = 5
 G2L.ChatHistory.ScrollBarThickness = 4
 G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, 0)
 G2L.ChatHistory.Parent = G2L.Main
@@ -108,13 +93,12 @@ G2L.Layout.Padding = UDim.new(0, 6)
 G2L.Layout.SortOrder = Enum.SortOrder.LayoutOrder
 G2L.Layout.Parent = G2L.ChatHistory
 
--- BARRA DE DIGITAÇÃO
+-- BOTTOM BAR
 G2L.BottomBar = Instance.new("Frame")
 G2L.BottomBar.Size = UDim2.new(1, -20, 0, 45)
 G2L.BottomBar.Position = UDim2.new(0, 10, 1, -55)
 G2L.BottomBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 G2L.BottomBar.BackgroundTransparency = 0.5
-G2L.BottomBar.ZIndex = 5
 G2L.BottomBar.Parent = G2L.Main
 
 G2L.Input = Instance.new("TextBox")
@@ -124,9 +108,7 @@ G2L.Input.BackgroundTransparency = 1
 G2L.Input.TextColor3 = Color3.fromRGB(255, 255, 255)
 G2L.Input.PlaceholderText = "Click here to chat..."
 G2L.Input.TextXAlignment = Enum.TextXAlignment.Left
-G2L.Input.Text = ""
 G2L.Input.TextSize = 18 
-G2L.Input.ZIndex = 6
 G2L.Input.Parent = G2L.BottomBar
 
 G2L.SendBtn = Instance.new("ImageButton")
@@ -134,86 +116,66 @@ G2L.SendBtn.Size = UDim2.new(0, 25, 0, 25)
 G2L.SendBtn.Position = UDim2.new(1, -35, 0.5, -12)
 G2L.SendBtn.BackgroundTransparency = 1
 G2L.SendBtn.Image = "rbxassetid://18940312887"
-G2L.SendBtn.ZIndex = 6
 G2L.SendBtn.Parent = G2L.BottomBar
 
--- LÓGICA DE ARRASTAR (DRAG SYSTEM)
-local function MakeDraggable(obj)
-    local dragging, dragInput, dragStart, startPos
-    local function update(input)
-        local delta = input.Position - dragStart
-        obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-    obj.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = obj.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
-    obj.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then update(input) end
-    end)
+-- FUNÇÃO DE NOTIFICAÇÃO
+local function NotificarMensagem(sender, msg)
+    StarterGui:SetCore("SendNotification", {
+        Title = "Global Chat: " .. sender,
+        Text = msg,
+        Icon = "rbxassetid://18940312887",
+        Duration = 5
+    })
 end
 
-MakeDraggable(G2L.Main)
-MakeDraggable(G2L.ToggleButton)
-
-G2L.ToggleButton.MouseButton1Click:Connect(function()
-    G2L.Main.Visible = not G2L.Main.Visible
-end)
-
--- LÓGICA DO WEBSOCKET COM SINCRONIZAÇÃO DE BALÕES
+-- CONEXÃO WEBSOCKET
 local function StartNetwork()
     local socket
-    local key = "eLudeCBiiTiQSr6DWJPMPfpZK9B6ghEu90ZbJwzm"
-
+    local wsUrl = "wss://free.blr2.piesocket.com/v3/1?api_key=nJwrvMLQ39lJLpcxH88UbwiV08uXKrqSV7zvC1Z4&notify_self=1"
+    
     local success, _ = pcall(function()
-        socket = WebSocket.connect("wss://free.blr2.piesocket.com/v3/1?api_key="..key.."&notify_self=1")
+        socket = WebSocket.connect(wsUrl)
     end)
 
     if socket then
         socket.OnMessage:Connect(function(msg)
-            local data = HttpService:JSONDecode(msg)
-            
-            -- 1. CRIAR MENSAGEM NA INTERFACE (TAMANHO 19)
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, 0, 0, 25)
-            label.BackgroundTransparency = 1
-            label.RichText = true
-            label.Font = Enum.Font.SourceSansBold
-            label.TextColor3 = Color3.fromRGB(255, 255, 255)
-            label.TextSize = 19 -- TAMANHO SOLICITADO
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            label.Text = string.format("<font color='#ffffff'>[%s]:</font> %s", data.nickname or data.username, data.message)
-            label.AutomaticSize = Enum.AutomaticSize.Y
-            label.TextWrapped = true
-            label.ZIndex = 7
-            label.Parent = G2L.ChatHistory
-            G2L.ChatHistory.CanvasPosition = Vector2.new(0, G2L.Layout.AbsoluteContentSize.Y)
+            local ok, data = pcall(function() return HttpService:JSONDecode(msg) end)
+            if ok and data.message then
+                -- Adicionar ao quadro
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(1, 0, 0, 30)
+                label.BackgroundTransparency = 1
+                label.RichText = true
+                label.Font = Enum.Font.SourceSansBold
+                label.TextColor3 = Color3.fromRGB(255, 255, 255)
+                label.TextSize = 22
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Text = string.format("<font color='#ffffff'>[%s]:</font> %s", data.nickname or data.username, data.message)
+                label.AutomaticSize = Enum.AutomaticSize.Y
+                label.TextWrapped = true
+                label.Parent = G2L.ChatHistory
+                
+                -- Notificar se não for eu
+                if data.username ~= Player.Name then
+                    NotificarMensagem(data.nickname or data.username, data.message)
+                end
 
-            -- 2. SINCRONIZAÇÃO DE BALÃO (BUBBLE SYNC)
-            -- Procura se o dono da mensagem está no mesmo servidor
-            local TargetPlayer = Players:FindFirstChild(data.username)
-            if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("Head") then
-                ChatService:Chat(TargetPlayer.Character.Head, data.message, Enum.ChatColor.White)
+                -- Balão na cabeça
+                local TargetPlayer = Players:FindFirstChild(data.username)
+                if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("Head") then
+                    ChatService:Chat(TargetPlayer.Character.Head, data.message, Enum.ChatColor.White)
+                end
+                
+                G2L.ChatHistory.CanvasPosition = Vector2.new(0, G2L.Layout.AbsoluteContentSize.Y)
             end
         end)
 
         local function enviar()
-            local msgText = G2L.Input.Text
-            if msgText ~= "" then
-                -- Envia para o servidor global (os balões serão gerados pelo OnMessage acima)
+            if G2L.Input.Text ~= "" then
                 socket:Send(HttpService:JSONEncode({
                     username = Player.Name, 
                     nickname = Player.DisplayName, 
-                    message = msgText
+                    message = G2L.Input.Text
                 }))
                 G2L.Input.Text = ""
             end
@@ -224,9 +186,32 @@ local function StartNetwork()
     end
 end
 
+-- ARRASTAR
+local function MakeDraggable(obj)
+    local dragging, dragInput, dragStart, startPos
+    obj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = obj.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+MakeDraggable(G2L.Main)
+G2L.ToggleButton.MouseButton1Click:Connect(function() G2L.Main.Visible = not G2L.Main.Visible end)
+
 task.spawn(StartNetwork)
 
--- AJUSTE DINÂMICO DO SCROLL
 G2L.Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, G2L.Layout.AbsoluteContentSize.Y + 10)
 end)
