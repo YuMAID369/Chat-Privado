@@ -25,13 +25,13 @@ G2L.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 G2L.ScreenGui.ResetOnSpawn = false
 G2L.ScreenGui.Parent = game:GetService("CoreGui")
 
--- BOTAO TOGGLE (ÍCONE DINÂMICO E ARRASTÁVEL)
+-- BOTAO TOGGLE
 G2L.ToggleButton = Instance.new("ImageButton")
 G2L.ToggleButton.Name = "ToggleChat"
 G2L.ToggleButton.Size = UDim2.new(0, 55, 0, 55)
 G2L.ToggleButton.Position = UDim2.new(0.02, 0, 0.45, 0)
 G2L.ToggleButton.BackgroundTransparency = 1 
-G2L.ToggleButton.Image = ID_NORMAL -- Inicia com o ID padrão solicitado
+G2L.ToggleButton.Image = ID_NORMAL
 G2L.ToggleButton.Parent = G2L.ScreenGui
 
 -- JANELA PRINCIPAL
@@ -42,7 +42,7 @@ G2L.Main.Position = UDim2.new(0.5, -190, 0.5, -110)
 G2L.Main.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
 G2L.Main.BackgroundTransparency = 0.15
 G2L.Main.BorderSizePixel = 0
-G2L.Main.Visible = false -- Inicia fechado para testar a notificação
+G2L.Main.Visible = false
 G2L.Main.Parent = G2L.ScreenGui
 
 G2L.MainCorner = Instance.new("UICorner")
@@ -54,17 +54,7 @@ G2L.MainStroke.Color = Color3.fromRGB(0, 60, 110)
 G2L.MainStroke.Thickness = 1.5
 G2L.MainStroke.Parent = G2L.Main
 
--- LOGO CENTRAL
-G2L.Watermark = Instance.new("ImageLabel")
-G2L.Watermark.Size = UDim2.new(0, 130, 0, 130)
-G2L.Watermark.Position = UDim2.new(0.5, -65, 0.5, -65)
-G2L.Watermark.BackgroundTransparency = 1
-G2L.Watermark.Image = "rbxassetid://130275641191868"
-G2L.Watermark.ImageTransparency = 0.9
-G2L.Watermark.ZIndex = 1
-G2L.Watermark.Parent = G2L.Main
-
--- TOPBAR
+-- TOPBAR E ELEMENTOS VISUAIS (Mantidos conforme seu design)
 G2L.TopBar = Instance.new("Frame")
 G2L.TopBar.Size = UDim2.new(1, 0, 0, 35)
 G2L.TopBar.BackgroundTransparency = 1
@@ -104,7 +94,6 @@ G2L.TabServer = CriarAba("General", 0, true)
 G2L.TabTeam = CriarAba("Team", 0.333, true)
 G2L.TabFriends = CriarAba("[Friend]", 0.666, false)
 
--- SCROLLING FRAME
 G2L.ChatHistory = Instance.new("ScrollingFrame")
 G2L.ChatHistory.Size = UDim2.new(1, -20, 1, -85)
 G2L.ChatHistory.Position = UDim2.new(0, 10, 0, 40)
@@ -120,18 +109,12 @@ G2L.Layout.Padding = UDim.new(0, 4)
 G2L.Layout.SortOrder = Enum.SortOrder.LayoutOrder
 G2L.Layout.Parent = G2L.ChatHistory
 
--- BOTTOM AREA
 G2L.BottomArea = Instance.new("Frame")
 G2L.BottomArea.Size = UDim2.new(1, -16, 0, 35)
 G2L.BottomArea.Position = UDim2.new(0, 8, 1, -40)
 G2L.BottomArea.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 G2L.BottomArea.BackgroundTransparency = 0.4
 G2L.BottomArea.Parent = G2L.Main
-
-G2L.BottomStroke = Instance.new("UIStroke")
-G2L.BottomStroke.Color = Color3.fromRGB(0, 60, 110)
-G2L.BottomStroke.Transparency = 0.5
-G2L.BottomStroke.Parent = G2L.BottomArea
 
 G2L.Input = Instance.new("TextBox")
 G2L.Input.Size = UDim2.new(1, -60, 1, 0)
@@ -151,7 +134,7 @@ G2L.SendBtn.Image = "rbxassetid://18940312887"
 G2L.SendBtn.ImageColor3 = Color3.fromRGB(0, 140, 255)
 G2L.SendBtn.Parent = G2L.BottomArea
 
--- FUNÇÃO PARA BUBBLE CHAT (USA O USERNAME PARA LOCALIZAR A HEAD)
+-- LOGICA DE MENSAGENS E BUBBLE
 local function MostrarBubbleChat(username, message)
     local targetPlayer = Players:FindFirstChild(username)
     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
@@ -159,7 +142,6 @@ local function MostrarBubbleChat(username, message)
     end
 end
 
--- LOGICA DE MENSAGENS (EXIBE DISPLAY NAME NO UI)
 local function AdicionarMensagem(username, displayname, msg, isMe)
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -5, 0, 18)
@@ -170,7 +152,6 @@ local function AdicionarMensagem(username, displayname, msg, isMe)
     label.TextXAlignment = Enum.TextXAlignment.Left
     
     local nameColor = isMe and "rgb(255,100,100)" or "rgb(190,100,255)"
-    -- Agora exibe o displayname no texto do chat
     label.Text = string.format("<font color='%s'>%s:</font> <font color='rgb(255,255,255)'>%s</font>", nameColor, displayname, msg)
     
     label.AutomaticSize = Enum.AutomaticSize.Y
@@ -179,7 +160,6 @@ local function AdicionarMensagem(username, displayname, msg, isMe)
     
     G2L.ChatHistory.CanvasPosition = Vector2.new(0, G2L.Layout.AbsoluteContentSize.Y)
     
-    -- Notificação visual se o chat estiver fechado e a mensagem não for minha
     if not G2L.Main.Visible and not isMe then
         G2L.ToggleButton.Image = ID_NOTIFICACAO
     end
@@ -187,40 +167,61 @@ local function AdicionarMensagem(username, displayname, msg, isMe)
     MostrarBubbleChat(username, msg)
 end
 
--- SISTEMA DE REDE
-local function StartNetwork()
-    local socket
-    local wsUrl = "wss://free.blr2.piesocket.com/v3/1?api_key=nJwrvMLQ39lJLpcxH88UbwiV08uXKrqSV7zvC1Z4&notify_self=1"
-    
-    pcall(function() socket = WebSocket.connect(wsUrl) end)
+-- SISTEMA DE REDE COM RECONEXÃO AUTOMÁTICA
+local socket
+local wsUrl = "wss://free.blr2.piesocket.com/v3/1?api_key=nJwrvMLQ39lJLpcxH88UbwiV08uXKrqSV7zvC1Z4&notify_self=1"
 
-    if socket then
+local function ConnectWebSocket()
+    local success, res = pcall(function()
+        return WebSocket.connect(wsUrl)
+    end)
+
+    if success and res then
+        socket = res
+        print("Chat Conectado!")
+
         socket.OnMessage:Connect(function(msg)
             local ok, data = pcall(function() return HttpService:JSONDecode(msg) end)
             if ok and data.message then
-                -- Prioriza o nickname (displayname) enviado, se não houver, usa o username
                 local dName = data.nickname or data.username
                 AdicionarMensagem(data.username, dName, data.message, data.username == Player.Name)
             end
         end)
 
-        local function enviar()
-            if G2L.Input.Text ~= "" then
-                pcall(function()
-                    socket:Send(HttpService:JSONEncode({
-                        username = Player.Name, 
-                        nickname = Player.DisplayName, -- Enviando o nome de exibição principal
-                        message = G2L.Input.Text
-                    }))
-                end)
-                G2L.Input.Text = ""
-            end
-        end
-
-        G2L.SendBtn.MouseButton1Click:Connect(enviar)
-        G2L.Input.FocusLost:Connect(function(enter) if enter then enviar() end end)
+        socket.OnClose:Connect(function()
+            warn("Conexão perdida! Tentando reconectar em 5 segundos...")
+            task.wait(5)
+            ConnectWebSocket()
+        end)
+    else
+        warn("Erro ao conectar no servidor. Tentando novamente...")
+        task.wait(5)
+        ConnectWebSocket()
     end
 end
+
+-- Botão Enviar com verificação de conexão
+local function EnviarMensagem()
+    if socket and G2L.Input.Text ~= "" then
+        local success, err = pcall(function()
+            socket:Send(HttpService:JSONEncode({
+                username = Player.Name, 
+                nickname = Player.DisplayName, 
+                message = G2L.Input.Text
+            }))
+        end)
+        if not success then 
+            warn("Falha no envio (Socket morto). Tentando reconectar...")
+            ConnectWebSocket()
+        end
+        G2L.Input.Text = ""
+    elseif not socket then
+        warn("Chat desconectado. Aguarde a reconexão.")
+    end
+end
+
+G2L.SendBtn.MouseButton1Click:Connect(EnviarMensagem)
+G2L.Input.FocusLost:Connect(function(enter) if enter then EnviarMensagem() end end)
 
 -- FUNÇÃO DE ARRASTE
 local function MakeDraggable(gui)
@@ -251,17 +252,14 @@ end
 MakeDraggable(G2L.Main)
 MakeDraggable(G2L.ToggleButton)
 
--- Lógica do Toggle Button
 G2L.ToggleButton.MouseButton1Click:Connect(function() 
     G2L.Main.Visible = not G2L.Main.Visible 
-    
-    -- Se abrir o chat, remove o ícone de notificação e volta ao padrão
     if G2L.Main.Visible then
         G2L.ToggleButton.Image = ID_NORMAL
     end
 end)
 
-task.spawn(StartNetwork)
+task.spawn(ConnectWebSocket)
 
 G2L.Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, G2L.Layout.AbsoluteContentSize.Y + 10)
