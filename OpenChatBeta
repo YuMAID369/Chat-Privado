@@ -3,10 +3,15 @@ local G2L = {};
 -- IDs dos Ícones
 local ID_NORMAL = "rbxassetid://134601196355279"
 local ID_NOTIFICACAO = "rbxassetid://130103945046316"
+local ID_SIMBOLO_CENTRAL = "rbxassetid://85337967115080"
+local ID_BOTAO_FECHAR = "rbxassetid://89783450460085"
 
--- Prevenção de execução dupla
+-- Prevenção de execução dupla e encerramento limpo
 if getgenv().custom_chat_loaded then
     warn("Limpando execução anterior...")
+    if game:GetService("CoreGui"):FindFirstChild("GlobalChat_Elite_V3") then
+        game:GetService("CoreGui")["GlobalChat_Elite_V3"]:Destroy()
+    end
     getgenv().custom_chat_loaded = nil
 end
 getgenv().custom_chat_loaded = true
@@ -15,7 +20,6 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local ChatService = game:GetService("Chat") 
-local StarterGui = game:GetService("StarterGui")
 local Player = Players.LocalPlayer
 
 -- UI PRINCIPAL
@@ -34,72 +38,74 @@ G2L.ToggleButton.BackgroundTransparency = 1
 G2L.ToggleButton.Image = ID_NORMAL
 G2L.ToggleButton.Parent = G2L.ScreenGui
 
--- JANELA PRINCIPAL
+-- JANELA PRINCIPAL (Design Escuro Igual à Imagem)
 G2L.Main = Instance.new("Frame")
 G2L.Main.Name = "MainFrame"
-G2L.Main.Size = UDim2.new(0, 380, 0, 220)
-G2L.Main.Position = UDim2.new(0.5, -190, 0.5, -110)
-G2L.Main.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
-G2L.Main.BackgroundTransparency = 0.15
+G2L.Main.Size = UDim2.new(0, 420, 0, 260)
+G2L.Main.Position = UDim2.new(0.5, -210, 0.5, -130)
+G2L.Main.BackgroundColor3 = Color3.fromRGB(13, 16, 19)
+G2L.Main.BackgroundTransparency = 0.05
 G2L.Main.BorderSizePixel = 0
 G2L.Main.Visible = false
 G2L.Main.Parent = G2L.ScreenGui
 
-G2L.MainCorner = Instance.new("UICorner")
-G2L.MainCorner.CornerRadius = UDim.new(0, 4)
-G2L.MainCorner.Parent = G2L.Main
-
 G2L.MainStroke = Instance.new("UIStroke")
-G2L.MainStroke.Color = Color3.fromRGB(0, 60, 110)
+G2L.MainStroke.Color = Color3.fromRGB(255, 255, 255)
 G2L.MainStroke.Thickness = 1.5
 G2L.MainStroke.Parent = G2L.Main
 
--- TOPBAR E ELEMENTOS VISUAIS (Mantidos conforme seu design)
+-- TOPBAR
 G2L.TopBar = Instance.new("Frame")
-G2L.TopBar.Size = UDim2.new(1, 0, 0, 35)
+G2L.TopBar.Size = UDim2.new(1, 0, 0, 40)
 G2L.TopBar.BackgroundTransparency = 1
 G2L.TopBar.ZIndex = 5
 G2L.TopBar.Parent = G2L.Main
 
-local function CriarAba(nome, pos, showDivider)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.333, 0, 1, 0)
-    btn.Position = UDim2.new(pos, 0, 0, 0)
-    btn.BackgroundTransparency = 1
-    btn.Text = nome
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
-    btn.Parent = G2L.TopBar
-    
-    if showDivider then
-        local div = Instance.new("Frame")
-        div.Size = UDim2.new(0, 1, 0.4, 0)
-        div.Position = UDim2.new(1, 0, 0.3, 0)
-        div.BackgroundColor3 = Color3.fromRGB(0, 60, 110)
-        div.BackgroundTransparency = 0.6
-        div.Parent = btn
-    end
-    
-    local line = Instance.new("Frame")
-    line.Size = UDim2.new(0.7, 0, 0, 2)
-    line.Position = UDim2.new(0.15, 0, 1, -2)
-    line.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
-    line.Visible = (nome == "General")
-    line.Parent = btn
-    return btn
-end
+G2L.Title = Instance.new("TextLabel")
+G2L.Title.Size = UDim2.new(1, 0, 1, 0)
+G2L.Title.BackgroundTransparency = 1
+G2L.Title.Text = "Chat Geral"
+G2L.Title.Font = Enum.Font.SourceSansBold
+G2L.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+G2L.Title.TextSize = 20
+G2L.Title.ZIndex = 5
+G2L.Title.Parent = G2L.TopBar
 
-G2L.TabServer = CriarAba("General", 0, true)
-G2L.TabTeam = CriarAba("Team", 0.333, true)
-G2L.TabFriends = CriarAba("[Friend]", 0.666, false)
+-- BOTÃO DE FECHAR
+G2L.CloseBtn = Instance.new("ImageButton")
+G2L.CloseBtn.Size = UDim2.new(0, 26, 0, 26)
+G2L.CloseBtn.Position = UDim2.new(1, -35, 0.5, -13)
+G2L.CloseBtn.BackgroundTransparency = 1
+G2L.CloseBtn.Image = ID_BOTAO_FECHAR
+G2L.CloseBtn.ZIndex = 6
+G2L.CloseBtn.Parent = G2L.TopBar
 
+-- LINHA DIVISÓRIA SUPERIOR
+G2L.TopDivider = Instance.new("Frame")
+G2L.TopDivider.Size = UDim2.new(1, 0, 0, 1)
+G2L.TopDivider.Position = UDim2.new(0, 0, 0, 40)
+G2L.TopDivider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+G2L.TopDivider.BorderSizePixel = 0
+G2L.TopDivider.Parent = G2L.Main
+
+-- SÍMBOLO CENTRAL (Marca d'água de fundo)
+G2L.CenterSymbol = Instance.new("ImageLabel")
+G2L.CenterSymbol.Size = UDim2.new(0, 120, 0, 120)
+G2L.CenterSymbol.Position = UDim2.new(0.5, -60, 0.5, -45)
+G2L.CenterSymbol.BackgroundTransparency = 1
+G2L.CenterSymbol.Image = ID_SIMBOLO_CENTRAL
+G2L.CenterSymbol.ImageColor3 = Color3.fromRGB(255, 255, 255)
+G2L.CenterSymbol.ImageTransparency = 0.85
+G2L.CenterSymbol.ZIndex = 1
+G2L.CenterSymbol.Parent = G2L.Main
+
+-- HISTÓRICO DE CHAT
 G2L.ChatHistory = Instance.new("ScrollingFrame")
-G2L.ChatHistory.Size = UDim2.new(1, -20, 1, -85)
-G2L.ChatHistory.Position = UDim2.new(0, 10, 0, 40)
+G2L.ChatHistory.Size = UDim2.new(1, -20, 1, -95)
+G2L.ChatHistory.Position = UDim2.new(0, 10, 0, 45)
 G2L.ChatHistory.BackgroundTransparency = 1
-G2L.ChatHistory.ScrollBarThickness = 4
-G2L.ChatHistory.ScrollBarImageColor3 = Color3.fromRGB(0, 140, 255)
+G2L.ChatHistory.ScrollBarThickness = 3
+G2L.ChatHistory.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
 G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, 0)
 G2L.ChatHistory.ZIndex = 5
 G2L.ChatHistory.Parent = G2L.Main
@@ -109,29 +115,38 @@ G2L.Layout.Padding = UDim.new(0, 4)
 G2L.Layout.SortOrder = Enum.SortOrder.LayoutOrder
 G2L.Layout.Parent = G2L.ChatHistory
 
+-- ÁREA INFERIOR DE INPUT
 G2L.BottomArea = Instance.new("Frame")
-G2L.BottomArea.Size = UDim2.new(1, -16, 0, 35)
-G2L.BottomArea.Position = UDim2.new(0, 8, 1, -40)
-G2L.BottomArea.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-G2L.BottomArea.BackgroundTransparency = 0.4
+G2L.BottomArea.Size = UDim2.new(1, -12, 0, 36)
+G2L.BottomArea.Position = UDim2.new(0, 6, 1, -42)
+G2L.BottomArea.BackgroundColor3 = Color3.fromRGB(5, 7, 9)
+G2L.BottomArea.BorderSizePixel = 0
 G2L.BottomArea.Parent = G2L.Main
 
+G2L.BottomStroke = Instance.new("UIStroke")
+G2L.BottomStroke.Color = Color3.fromRGB(40, 50, 60)
+G2L.BottomStroke.Thickness = 1
+G2L.BottomStroke.Parent = G2L.BottomArea
+
 G2L.Input = Instance.new("TextBox")
-G2L.Input.Size = UDim2.new(1, -60, 1, 0)
+G2L.Input.Size = UDim2.new(1, -50, 1, 0)
 G2L.Input.Position = UDim2.new(0, 10, 0, 0)
 G2L.Input.BackgroundTransparency = 1
-G2L.Input.TextColor3 = Color3.fromRGB(230, 230, 230)
-G2L.Input.PlaceholderText = "To chat click here..."
+G2L.Input.Text = "" -- Força o campo a iniciar totalmente vazio
+G2L.Input.TextColor3 = Color3.fromRGB(255, 255, 255)
+G2L.Input.PlaceholderText = "Digite uma Mensagem..."
+G2L.Input.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
 G2L.Input.TextXAlignment = Enum.TextXAlignment.Left
-G2L.Input.TextSize = 14 
+G2L.Input.TextSize = 15
+G2L.Input.Font = Enum.Font.SourceSansBold
 G2L.Input.Parent = G2L.BottomArea
 
 G2L.SendBtn = Instance.new("ImageButton")
-G2L.SendBtn.Size = UDim2.new(0, 20, 0, 20)
-G2L.SendBtn.Position = UDim2.new(1, -30, 0.5, -10)
+G2L.SendBtn.Size = UDim2.new(0, 22, 0, 22)
+G2L.SendBtn.Position = UDim2.new(1, -32, 0.5, -11)
 G2L.SendBtn.BackgroundTransparency = 1
 G2L.SendBtn.Image = "rbxassetid://18940312887"
-G2L.SendBtn.ImageColor3 = Color3.fromRGB(0, 140, 255)
+G2L.SendBtn.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Cor alterada de azul para Branco/Cinza Claro
 G2L.SendBtn.Parent = G2L.BottomArea
 
 -- LOGICA DE MENSAGENS E BUBBLE
@@ -148,18 +163,19 @@ local function AdicionarMensagem(username, displayname, msg, isMe)
     label.BackgroundTransparency = 1
     label.RichText = true
     label.Font = Enum.Font.SourceSansBold
-    label.TextSize = 16
+    label.TextSize = 15
     label.TextXAlignment = Enum.TextXAlignment.Left
-    
+
     local nameColor = isMe and "rgb(255,100,100)" or "rgb(190,100,255)"
     label.Text = string.format("<font color='%s'>%s:</font> <font color='rgb(255,255,255)'>%s</font>", nameColor, displayname, msg)
-    
+
     label.AutomaticSize = Enum.AutomaticSize.Y
     label.TextWrapped = true
+    label.ZIndex = 6
     label.Parent = G2L.ChatHistory
-    
+
     G2L.ChatHistory.CanvasPosition = Vector2.new(0, G2L.Layout.AbsoluteContentSize.Y)
-    
+
     if not G2L.Main.Visible and not isMe then
         G2L.ToggleButton.Image = ID_NOTIFICACAO
     end
@@ -170,8 +186,11 @@ end
 -- SISTEMA DE REDE COM RECONEXÃO AUTOMÁTICA
 local socket
 local wsUrl = "wss://free.blr2.piesocket.com/v3/1?api_key=nJwrvMLQ39lJLpcxH88UbwiV08uXKrqSV7zvC1Z4&notify_self=1"
+local running = true
 
 local function ConnectWebSocket()
+    if not running then return end
+    
     local success, res = pcall(function()
         return WebSocket.connect(wsUrl)
     end)
@@ -181,6 +200,7 @@ local function ConnectWebSocket()
         print("Chat Conectado!")
 
         socket.OnMessage:Connect(function(msg)
+            if not running then return end
             local ok, data = pcall(function() return HttpService:JSONDecode(msg) end)
             if ok and data.message then
                 local dName = data.nickname or data.username
@@ -189,14 +209,18 @@ local function ConnectWebSocket()
         end)
 
         socket.OnClose:Connect(function()
-            warn("Conexão perdida! Tentando reconectar em 5 segundos...")
-            task.wait(5)
-            ConnectWebSocket()
+            if running then
+                warn("Conexão perdida! Tentando reconectar em 5 segundos...")
+                task.wait(5)
+                ConnectWebSocket()
+            end
         end)
     else
-        warn("Erro ao conectar no servidor. Tentando novamente...")
-        task.wait(5)
-        ConnectWebSocket()
+        if running then
+            warn("Erro ao conectar no servidor. Tentando novamente...")
+            task.wait(5)
+            ConnectWebSocket()
+        end
     end
 end
 
@@ -257,6 +281,17 @@ G2L.ToggleButton.MouseButton1Click:Connect(function()
     if G2L.Main.Visible then
         G2L.ToggleButton.Image = ID_NORMAL
     end
+end)
+
+-- Ação do Botão de Fechar
+G2L.CloseBtn.MouseButton1Click:Connect(function()
+    running = false
+    getgenv().custom_chat_loaded = nil
+    if socket then
+        pcall(function() socket:Close() end)
+    end
+    G2L.ScreenGui:Destroy()
+    print("Script de Chat Encerrado Definitivamente.")
 end)
 
 task.spawn(ConnectWebSocket)
