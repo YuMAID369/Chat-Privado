@@ -1,6 +1,12 @@
 local G2L = {};
 
--- IDs dos Ícones
+-- CONFIGURAÇÃO DO PIESOCKET (SpwnCub V2 Chat)
+-- ID do cluster: free.blr2
+-- Chave de API: iwYCQEyErMVj5txmeTDuzQ0Sle6V7tcAuOvlZQZp
+-- ID da API: 23242
+local wsUrl = "wss://free.blr2.piesocket.com/v3/1?api_key=iwYCQEyErMVj5txmeTDuzQ0Sle6V7tcAuOvlZQZp&notify_self=1"
+
+-- IDs dos Ícones da UI
 local ID_NORMAL = "rbxassetid://134601196355279"
 local ID_NOTIFICACAO = "rbxassetid://130103945046316"
 local ID_SIMBOLO_CENTRAL = "rbxassetid://85337967115080"
@@ -38,7 +44,7 @@ G2L.ToggleButton.BackgroundTransparency = 1
 G2L.ToggleButton.Image = ID_NORMAL
 G2L.ToggleButton.Parent = G2L.ScreenGui
 
--- JANELA PRINCIPAL (Design Escuro Igual à Imagem)
+-- JANELA PRINCIPAL
 G2L.Main = Instance.new("Frame")
 G2L.Main.Name = "MainFrame"
 G2L.Main.Size = UDim2.new(0, 420, 0, 260)
@@ -88,7 +94,7 @@ G2L.TopDivider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 G2L.TopDivider.BorderSizePixel = 0
 G2L.TopDivider.Parent = G2L.Main
 
--- SÍMBOLO CENTRAL (Marca d'água de fundo)
+-- SÍMBOLO CENTRAL
 G2L.CenterSymbol = Instance.new("ImageLabel")
 G2L.CenterSymbol.Size = UDim2.new(0, 120, 0, 120)
 G2L.CenterSymbol.Position = UDim2.new(0.5, -60, 0.5, -45)
@@ -132,7 +138,7 @@ G2L.Input = Instance.new("TextBox")
 G2L.Input.Size = UDim2.new(1, -50, 1, 0)
 G2L.Input.Position = UDim2.new(0, 10, 0, 0)
 G2L.Input.BackgroundTransparency = 1
-G2L.Input.Text = "" -- Força o campo a iniciar totalmente vazio
+G2L.Input.Text = ""
 G2L.Input.TextColor3 = Color3.fromRGB(255, 255, 255)
 G2L.Input.PlaceholderText = "Digite uma Mensagem..."
 G2L.Input.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
@@ -146,7 +152,7 @@ G2L.SendBtn.Size = UDim2.new(0, 22, 0, 22)
 G2L.SendBtn.Position = UDim2.new(1, -32, 0.5, -11)
 G2L.SendBtn.BackgroundTransparency = 1
 G2L.SendBtn.Image = "rbxassetid://18940312887"
-G2L.SendBtn.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Cor alterada de azul para Branco/Cinza Claro
+G2L.SendBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.SendBtn.Parent = G2L.BottomArea
 
 -- LOGICA DE MENSAGENS E BUBBLE
@@ -183,9 +189,8 @@ local function AdicionarMensagem(username, displayname, msg, isMe)
     MostrarBubbleChat(username, msg)
 end
 
--- SISTEMA DE REDE COM RECONEXÃO AUTOMÁTICA
+-- SISTEMA DE REDE COM RECONEXÃO AUTOMÁTICA (Chave Nova Aplicada)
 local socket
-local wsUrl = "wss://free.blr2.piesocket.com/v3/1?api_key=nJwrvMLQ39lJLpcxH88UbwiV08uXKrqSV7zvC1Z4&notify_self=1"
 local running = true
 
 local function ConnectWebSocket()
@@ -197,7 +202,7 @@ local function ConnectWebSocket()
 
     if success and res then
         socket = res
-        print("Chat Conectado!")
+        print("SpwnCub V2 Chat Conectado com sucesso!")
 
         socket.OnMessage:Connect(function(msg)
             if not running then return end
@@ -210,21 +215,21 @@ local function ConnectWebSocket()
 
         socket.OnClose:Connect(function()
             if running then
-                warn("Conexão perdida! Tentando reconectar em 5 segundos...")
+                warn("Conexão interrompida. Tentando reconectar...")
                 task.wait(5)
                 ConnectWebSocket()
             end
         end)
     else
         if running then
-            warn("Erro ao conectar no servidor. Tentando novamente...")
+            warn("Erro de conexão com o novo cluster. Reajustando em 5 segundos...")
             task.wait(5)
             ConnectWebSocket()
         end
     end
 end
 
--- Botão Enviar com verificação de conexão
+-- Botão Enviar
 local function EnviarMensagem()
     if socket and G2L.Input.Text ~= "" then
         local success, err = pcall(function()
