@@ -11,6 +11,7 @@ local ID_NORMAL = "rbxassetid://134601196355279"
 local ID_NOTIFICACAO = "rbxassetid://130103945046316"
 local ID_SIMBOLO_CENTRAL = "rbxassetid://85337967115080"
 local ID_BOTAO_FECHAR = "rbxassetid://89783450460085"
+local ID_SOM_NOTIFICACAO = "rbxassetid://1293433423"
 
 -- Prevenção de execução dupla e encerramento limpo
 if getgenv().custom_chat_loaded then
@@ -34,6 +35,13 @@ G2L.ScreenGui.Name = "GlobalChat_Elite_V3"
 G2L.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 G2L.ScreenGui.ResetOnSpawn = false
 G2L.ScreenGui.Parent = game:GetService("CoreGui")
+
+-- INSTÂNCIA DO SOM
+local NotificationSound = Instance.new("Sound")
+NotificationSound.Name = "ChatNotificationSound"
+NotificationSound.SoundId = ID_SOM_NOTIFICACAO
+NotificationSound.Volume = 1
+NotificationSound.Parent = G2L.ScreenGui
 
 -- BOTAO TOGGLE
 G2L.ToggleButton = Instance.new("ImageButton")
@@ -184,6 +192,7 @@ local function AdicionarMensagem(username, displayname, msg, isMe)
 
     if not G2L.Main.Visible and not isMe then
         G2L.ToggleButton.Image = ID_NOTIFICACAO
+        NotificationSound:Play() -- Toca o áudio se a interface estiver fechada e a mensagem não for do LocalPlayer
     end
 
     MostrarBubbleChat(username, msg)
@@ -195,7 +204,7 @@ local running = true
 
 local function ConnectWebSocket()
     if not running then return end
-    
+
     local success, res = pcall(function()
         return WebSocket.connect(wsUrl)
     end)
