@@ -1,17 +1,18 @@
 local G2L = {};
 
 -- CONFIGURAÇÃO DO PIESOCKET (SpwnCub V2 Chat)
--- ID do cluster: free.blr2
--- Chave de API: iwYCQEyErMVj5txmeTDuzQ0Sle6V7tcAuOvlZQZp
--- ID da API: 23242
 local wsUrl = "wss://free.blr2.piesocket.com/v3/1?api_key=iwYCQEyErMVj5txmeTDuzQ0Sle6V7tcAuOvlZQZp&notify_self=1"
 
 -- IDs dos Ícones da UI
 local ID_NORMAL = "rbxassetid://134601196355279"
 local ID_NOTIFICACAO = "rbxassetid://130103945046316"
 local ID_SIMBOLO_CENTRAL = "rbxassetid://85337967115080"
-local ID_BOTAO_FECHAR = "rbxassetid://89783450460085"
+local ID_BOTAO_FECHAR = "rbxassetid://98235327129327"
+local ID_BOTAO_SELECAO = "rbxassetid://105157650009654"
 local ID_SOM_NOTIFICACAO = "rbxassetid://1293433423"
+
+-- FONTE DO CHAT
+local FONTE_PADRAO = Enum.Font.Arcade
 
 -- Prevenção de execução dupla e encerramento limpo
 if getgenv().custom_chat_loaded then
@@ -28,6 +29,9 @@ local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local ChatService = game:GetService("Chat") 
 local Player = Players.LocalPlayer
+
+-- Estado do Modo de Seleção/Cópia
+local modoSelecaoAtivo = false
 
 -- UI PRINCIPAL
 G2L.ScreenGui = Instance.new("ScreenGui")
@@ -78,21 +82,47 @@ G2L.TopBar.Parent = G2L.Main
 G2L.Title = Instance.new("TextLabel")
 G2L.Title.Size = UDim2.new(1, 0, 1, 0)
 G2L.Title.BackgroundTransparency = 1
-G2L.Title.Text = "Chat Geral"
-G2L.Title.Font = Enum.Font.SourceSansBold
+G2L.Title.Text = "CHAT PRIVADO SPWNCUB"
+G2L.Title.Font = FONTE_PADRAO
 G2L.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-G2L.Title.TextSize = 20
+G2L.Title.TextSize = 18
 G2L.Title.ZIndex = 5
 G2L.Title.Parent = G2L.TopBar
 
 -- BOTÃO DE FECHAR
 G2L.CloseBtn = Instance.new("ImageButton")
+G2L.CloseBtn.Name = "CloseBtn"
 G2L.CloseBtn.Size = UDim2.new(0, 26, 0, 26)
 G2L.CloseBtn.Position = UDim2.new(1, -35, 0.5, -13)
 G2L.CloseBtn.BackgroundTransparency = 1
 G2L.CloseBtn.Image = ID_BOTAO_FECHAR
 G2L.CloseBtn.ZIndex = 6
 G2L.CloseBtn.Parent = G2L.TopBar
+
+-- NOVO BOTÃO DE SELEÇÃO / CÓPIA (COM EFEITO DE TAMANHO)
+G2L.SelectBtn = Instance.new("ImageButton")
+G2L.SelectBtn.Name = "SelectBtn"
+G2L.SelectBtn.Size = UDim2.new(0, 24, 0, 24)
+G2L.SelectBtn.Position = UDim2.new(1, -68, 0.5, -12)
+G2L.SelectBtn.BackgroundTransparency = 1
+G2L.SelectBtn.Image = ID_BOTAO_SELECAO
+G2L.SelectBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+G2L.SelectBtn.ZIndex = 6
+G2L.SelectBtn.Parent = G2L.TopBar
+
+-- ALTERNAR MODO DE SELEÇÃO (Aumenta/Diminui sem alterar a cor)
+G2L.SelectBtn.MouseButton1Click:Connect(function()
+    modoSelecaoAtivo = not modoSelecaoAtivo
+    if modoSelecaoAtivo then
+        -- Aumenta levemente e ajusta a posição para manter centralizado
+        G2L.SelectBtn.Size = UDim2.new(0, 28, 0, 28)
+        G2L.SelectBtn.Position = UDim2.new(1, -70, 0.5, -14)
+    else
+        -- Volta ao tamanho e posição originais
+        G2L.SelectBtn.Size = UDim2.new(0, 24, 0, 24)
+        G2L.SelectBtn.Position = UDim2.new(1, -68, 0.5, -12)
+    end
+end)
 
 -- LINHA DIVISÓRIA SUPERIOR
 G2L.TopDivider = Instance.new("Frame")
@@ -151,8 +181,8 @@ G2L.Input.TextColor3 = Color3.fromRGB(255, 255, 255)
 G2L.Input.PlaceholderText = "Digite uma Mensagem..."
 G2L.Input.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
 G2L.Input.TextXAlignment = Enum.TextXAlignment.Left
-G2L.Input.TextSize = 15
-G2L.Input.Font = Enum.Font.SourceSansBold
+G2L.Input.TextSize = 14
+G2L.Input.Font = FONTE_PADRAO
 G2L.Input.Parent = G2L.BottomArea
 
 G2L.SendBtn = Instance.new("ImageButton")
@@ -172,33 +202,62 @@ local function MostrarBubbleChat(username, message)
 end
 
 local function AdicionarMensagem(username, displayname, msg, isMe)
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -5, 0, 18)
-    label.BackgroundTransparency = 1
-    label.RichText = true
-    label.Font = Enum.Font.SourceSansBold
-    label.TextSize = 15
-    label.TextXAlignment = Enum.TextXAlignment.Left
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -5, 0, 18)
+    btn.BackgroundTransparency = 1
+    btn.RichText = true
+    btn.Font = FONTE_PADRAO
+    btn.TextSize = 14
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.AutoButtonColor = false
 
     local nameColor = isMe and "rgb(255,100,100)" or "rgb(190,100,255)"
-    label.Text = string.format("<font color='%s'>%s:</font> <font color='rgb(255,255,255)'>%s</font>", nameColor, displayname, msg)
+    btn.Text = string.format("<font color='%s'>%s:</font> <font color='rgb(255,255,255)'>%s</font>", nameColor, displayname, msg)
 
-    label.AutomaticSize = Enum.AutomaticSize.Y
-    label.TextWrapped = true
-    label.ZIndex = 6
-    label.Parent = G2L.ChatHistory
+    btn.AutomaticSize = Enum.AutomaticSize.Y
+    btn.TextWrapped = true
+    btn.ZIndex = 6
+    btn.Parent = G2L.ChatHistory
+
+    -- LÓGICA DE PRESSIONAMENTO CONTÍNUO (SEGURAR PARA COPIAR SILENCIOSAMENTE)
+    local pressTimer
+    local isHolding = false
+
+    btn.InputBegan:Connect(function(input)
+        if modoSelecaoAtivo and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+            isHolding = true
+            pressTimer = task.delay(0.5, function()
+                if isHolding and modoSelecaoAtivo then
+                    if setclipboard then
+                        setclipboard(msg)
+                    elseif toclipboard then
+                        toclipboard(msg)
+                    end
+                end
+            end)
+        end
+    end)
+
+    btn.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isHolding = false
+            if pressTimer then
+                task.cancel(pressTimer)
+            end
+        end
+    end)
 
     G2L.ChatHistory.CanvasPosition = Vector2.new(0, G2L.Layout.AbsoluteContentSize.Y)
 
     if not G2L.Main.Visible and not isMe then
         G2L.ToggleButton.Image = ID_NOTIFICACAO
-        NotificationSound:Play() -- Toca o áudio se a interface estiver fechada e a mensagem não for do LocalPlayer
+        NotificationSound:Play()
     end
 
     MostrarBubbleChat(username, msg)
 end
 
--- SISTEMA DE REDE COM RECONEXÃO AUTOMÁTICA (Chave Nova Aplicada)
+-- SISTEMA DE REDE
 local socket
 local running = true
 
