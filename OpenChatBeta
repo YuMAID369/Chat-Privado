@@ -37,8 +37,10 @@ local CURRENT_SERVER_ID = (game.JobId ~= "" and game.JobId) or "STUDIO_SERVER"
 
 -- Estados de Controle
 local modoSelecaoAtivo = false
-local modoGlobal = false -- false = Servidor/Privado, true = Global
+local modoGlobal = false -- false = Servidor, true = Global
 local destinatarioPrivado = nil 
+local abasPrivadas = {} -- Guarda os históricos e botões das conversas privadas { [username] = { historyFrame, tabButton } }
+local abaAtual = "SERVER" -- "SERVER", "GLOBAL" ou Username do Jogador
 
 -- UI PRINCIPAL
 G2L.ScreenGui = Instance.new("ScreenGui")
@@ -103,7 +105,7 @@ G2L.Title.TextXAlignment = Enum.TextXAlignment.Left
 G2L.Title.ZIndex = 5
 G2L.Title.Parent = G2L.TopBar
 
--- BOTÃO DE FECHAR
+-- BOTÃO DE FECHAR SCRIPT
 G2L.CloseBtn = Instance.new("ImageButton")
 G2L.CloseBtn.Name = "CloseBtn"
 G2L.CloseBtn.Size = UDim2.new(0, 24, 0, 24)
@@ -158,10 +160,10 @@ G2L.CenterSymbol.ZIndex = 1
 G2L.CenterSymbol.Parent = G2L.Main
 
 ---------------------------------------------------------------------
--- CRIANDO DOIS CONTÊINERES SEPARADOS PARA OS HISTÓRICOS DE CHAT
+-- CONTÊINERES DE HISTÓRICO PADRÃO
 ---------------------------------------------------------------------
 
--- HISTÓRICO DO CHAT SERVIDOR (PRIVADO)
+-- HISTÓRICO SERVIDOR
 G2L.ServerHistory = Instance.new("ScrollingFrame")
 G2L.ServerHistory.Name = "ServerHistory"
 G2L.ServerHistory.Size = UDim2.new(1, -24, 1, -100)
@@ -179,7 +181,7 @@ ServerLayout.Padding = UDim.new(0, 3)
 ServerLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ServerLayout.Parent = G2L.ServerHistory
 
--- HISTÓRICO DO CHAT GLOBAL
+-- HISTÓRICO GLOBAL
 G2L.GlobalHistory = Instance.new("ScrollingFrame")
 G2L.GlobalHistory.Name = "GlobalHistory"
 G2L.GlobalHistory.Size = UDim2.new(1, -24, 1, -100)
@@ -197,16 +199,28 @@ GlobalLayout.Padding = UDim.new(0, 3)
 GlobalLayout.SortOrder = Enum.SortOrder.LayoutOrder
 GlobalLayout.Parent = G2L.GlobalHistory
 
--- ALTERNAR ENTRE AS ABAS
+-- FUNÇÃO PARA ALTERNAR A VISIBILIDADE DE TODAS AS ABAS
+local function OcultarTodasAsAbas()
+    G2L.ServerHistory.Visible = false
+    G2L.GlobalHistory.Visible = false
+    for _, aba in pairs(abasPrivadas) do
+        if aba.HistoryFrame then
+            aba.HistoryFrame.Visible = false
+        end
+    end
+end
+
+-- ALTERNAR MODO GLOBAL / SERVIDOR VIA BOTÃO
 G2L.ScopeBtn.MouseButton1Click:Connect(function()
+    OcultarTodasAsAbas()
     modoGlobal = not modoGlobal
     if modoGlobal then
+        abaAtual = "GLOBAL"
         G2L.Title.Text = "CHAT GLOBAL SPWNCUB"
-        G2L.ServerHistory.Visible = false
         G2L.GlobalHistory.Visible = true
     else
+        abaAtual = "SERVER"
         G2L.Title.Text = "CHAT SERVIDOR SPWNCUB"
-        G2L.GlobalHistory.Visible = false
         G2L.ServerHistory.Visible = true
     end
 end)
@@ -223,7 +237,7 @@ G2L.SelectBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- INDICADOR DE MENSAGEM DIRETA (SUSSURRO)
+-- INDICADOR INFERIOR DE MENSAGEM DIRETA (PRIVADO)
 local TargetIndicator = Instance.new("Frame")
 TargetIndicator.Size = UDim2.new(1, -16, 0, 20)
 TargetIndicator.Position = UDim2.new(0, 8, 1, -66)
@@ -237,7 +251,7 @@ TargetCorner.CornerRadius = UDim.new(0, 4)
 TargetCorner.Parent = TargetIndicator
 
 local TargetText = Instance.new("TextLabel")
-TargetText.Size = UDim2.new(1, -25, 1, 0)
+TargetText.Size = UDim2.new(1, -30, 1, 0)
 TargetText.Position = UDim2.new(0, 6, 0, 0)
 TargetText.BackgroundTransparency = 1
 TargetText.TextColor3 = Color3.fromRGB(120, 255, 140)
@@ -246,20 +260,82 @@ TargetText.TextSize = 13
 TargetText.TextXAlignment = Enum.TextXAlignment.Left
 TargetText.Parent = TargetIndicator
 
-local CancelTargetBtn = Instance.new("TextButton")
-CancelTargetBtn.Size = UDim2.new(0, 20, 1, 0)
-CancelTargetBtn.Position = UDim2.new(1, -20, 0, 0)
+-- BOTÃO COM O MESMO ID DA TOPBAR PARA FECHAR CONVERSA PRIVADA
+local CancelTargetBtn = Instance.new("ImageButton")
+CancelTargetBtn.Name = "CancelTargetBtn"
+CancelTargetBtn.Size = UDim2.new(0, 16, 0, 16)
+CancelTargetBtn.Position = UDim2.new(1, -20, 0.5, -8)
 CancelTargetBtn.BackgroundTransparency = 1
-CancelTargetBtn.Text = "X"
-CancelTargetBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-CancelTargetBtn.Font = FONTE_PIXEL
-CancelTargetBtn.TextSize = 12
+CancelTargetBtn.Image = ID_BOTAO_FECHAR
+CancelTargetBtn.ZIndex = 7
 CancelTargetBtn.Parent = TargetIndicator
 
-CancelTargetBtn.MouseButton1Click:Connect(function()
+local function FecharConversaPrivada()
+    if destinatarioPrivado and abasPrivadas[destinatarioPrivado] then
+        -- Oculta a aba da conversa privada sem apagar seu histórico
+        abasPrivadas[destinatarioPrivado].HistoryFrame.Visible = false
+    end
+
     destinatarioPrivado = nil
     TargetIndicator.Visible = false
-end)
+
+    -- Retorna para o chat padrão
+    OcultarTodasAsAbas()
+    if modoGlobal then
+        abaAtual = "GLOBAL"
+        G2L.Title.Text = "CHAT GLOBAL SPWNCUB"
+        G2L.GlobalHistory.Visible = true
+    else
+        abaAtual = "SERVER"
+        G2L.Title.Text = "CHAT SERVIDOR SPWNCUB"
+        G2L.ServerHistory.Visible = true
+    end
+end
+
+CancelTargetBtn.MouseButton1Click:Connect(FecharConversaPrivada)
+
+-- CRIAR/OBTER ABA DE CHAT PRIVADO COM UM JOGADOR
+local function AbrirAbaPrivada(targetUsername)
+    destinatarioPrivado = targetUsername
+    TargetText.Text = "Mensagem Direta para: @" .. targetUsername
+    TargetIndicator.Visible = true
+
+    OcultarTodasAsAbas()
+    abaAtual = targetUsername
+    G2L.Title.Text = "PV: @" .. string.upper(targetUsername)
+
+    if not abasPrivadas[targetUsername] then
+        -- Cria novo Frame de histórico dedicado
+        local historyFrame = Instance.new("ScrollingFrame")
+        historyFrame.Name = "PV_" .. targetUsername
+        historyFrame.Size = UDim2.new(1, -24, 1, -100)
+        historyFrame.Position = UDim2.new(0, 12, 0, 44)
+        historyFrame.BackgroundTransparency = 1
+        historyFrame.ScrollBarThickness = 3
+        historyFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
+        historyFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        historyFrame.ZIndex = 6
+        historyFrame.Visible = true
+        historyFrame.Parent = G2L.Main
+
+        local layout = Instance.new("UIListLayout")
+        layout.Padding = UDim.new(0, 3)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Parent = historyFrame
+
+        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            historyFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+        end)
+
+        abasPrivadas[targetUsername] = {
+            HistoryFrame = historyFrame,
+            Layout = layout
+        }
+    else
+        -- Reabre a aba existente sem apagar mensagens passadas
+        abasPrivadas[targetUsername].HistoryFrame.Visible = true
+    end
+end
 
 -- ÁREA INFERIOR DE INPUT
 G2L.BottomArea = Instance.new("Frame")
@@ -306,8 +382,8 @@ local function MostrarBubbleChat(username, message)
     end
 end
 
--- ADICIONAR MENSAGEM NO HISTÓRICO CORRETO
-local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mode)
+-- ADICIONAR MENSAGEM AO HISTÓRICO ADEQUADO
+local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mode, targetUser)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -5, 0, 18)
     btn.BackgroundTransparency = 1
@@ -331,23 +407,31 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
     btn.TextWrapped = true
     btn.ZIndex = 6
 
-    -- DEFINIR EM QUAL ABA A MENSAGEM FICARÁ
-    local targetHistoryContainer = G2L.ServerHistory
-    if mode == "GLOBAL" and not isPrivate then
-        targetHistoryContainer = G2L.GlobalHistory
-    end
-    btn.Parent = targetHistoryContainer
+    -- DEFINIÇÃO DA ABA ALVO DA MENSAGEM
+    local targetContainer = G2L.ServerHistory
 
-    -- MENSAGEM DIRETA
+    if isPrivate then
+        local otherUser = isMe and targetUser or username
+        if otherUser then
+            if not abasPrivadas[otherUser] then
+                AbrirAbaPrivada(otherUser)
+            end
+            targetContainer = abasPrivadas[otherUser].HistoryFrame
+        end
+    elseif mode == "GLOBAL" then
+        targetContainer = G2L.GlobalHistory
+    end
+
+    btn.Parent = targetContainer
+
+    -- CLICAR NO NOME ABRE A CONVERSA PRIVADA DEDICADA
     btn.MouseButton1Click:Connect(function()
         if not modoSelecaoAtivo and username ~= Player.Name then
-            destinatarioPrivado = username
-            TargetText.Text = "Mensagem Direta para: @" .. username
-            TargetIndicator.Visible = true
+            AbrirAbaPrivada(username)
         end
     end)
 
-    -- COPIAR (MODO SELEÇÃO)
+    -- COPIAR EM MODO DE SELEÇÃO
     local pressTimer
     local isHolding = false
 
@@ -373,7 +457,9 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
         end
     end)
 
-    targetHistoryContainer.CanvasPosition = Vector2.new(0, targetHistoryContainer.UIListLayout.AbsoluteContentSize.Y)
+    if targetContainer:FindFirstChild("UIListLayout") then
+        targetContainer.CanvasPosition = Vector2.new(0, targetContainer.UIListLayout.AbsoluteContentSize.Y)
+    end
 
     if not G2L.Main.Visible and not isMe then
         G2L.ToggleButton.Image = ID_NOTIFICACAO
@@ -383,7 +469,7 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
     MostrarBubbleChat(username, msg)
 end
 
--- CONEXÃO E FILTRAGEM WEBSOCKET
+-- WEBSOCKET FILTRAGEM
 local socket
 local running = true
 
@@ -406,21 +492,18 @@ local function ConnectWebSocket()
                 local isMe = (data.username == Player.Name)
                 local isPrivate = (data.target ~= nil and data.target ~= "")
 
-                -- 1. SE FOR MENSAGEM PRIVADA PARA PESSOA ESPECÍFICA
                 if isPrivate then
                     if data.target ~= Player.Name and not isMe then 
-                        return -- Não é para você -> Ignora
+                        return 
                     end
-                
-                -- 2. SE FOR MENSAGEM DE SERVIDOR (LOCAL)
                 elseif data.mode == "SERVER" then
                     if data.serverId ~= CURRENT_SERVER_ID then 
-                        return -- Pertence a outro servidor -> Ignora
+                        return 
                     end
                 end
 
                 local dName = data.nickname or data.username
-                AdicionarMensagem(data.username, dName, data.message, isMe, isPrivate, data.mode)
+                AdicionarMensagem(data.username, dName, data.message, isMe, isPrivate, data.mode, data.target)
             end
         end)
 
@@ -470,7 +553,7 @@ end
 G2L.SendBtn.MouseButton1Click:Connect(EnviarMensagem)
 G2L.Input.FocusLost:Connect(function(enter) if enter then EnviarMensagem() end end)
 
--- FUNÇÃO DE ARRASTE (DRAG)
+-- ARRASTE DA INTERFACE (DRAG)
 local function MakeDraggable(gui)
     local dragging, dragInput, dragStart, startPos
     gui.InputBegan:Connect(function(input)
