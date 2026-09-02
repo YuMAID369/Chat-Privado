@@ -39,8 +39,8 @@ local CURRENT_SERVER_ID = (game.JobId ~= "" and game.JobId) or "STUDIO_SERVER"
 local modoSelecaoAtivo = false
 local modoGlobal = false -- false = Servidor, true = Global
 local destinatarioPrivado = nil 
-local abasPrivadas = {} -- Guarda os históricos e botões das conversas privadas { [username] = { historyFrame, tabButton } }
 local abaAtual = "SERVER" -- "SERVER", "GLOBAL" ou Username do Jogador
+local abasPrivadas = {} -- { [username] = { HistoryFrame, TabBtn, UnreadCount, Layout } }
 
 -- UI PRINCIPAL
 G2L.ScreenGui = Instance.new("ScreenGui")
@@ -88,7 +88,7 @@ G2L.MainStroke.Parent = G2L.Main
 
 -- TOPBAR
 G2L.TopBar = Instance.new("Frame")
-G2L.TopBar.Size = UDim2.new(1, 0, 0, 40)
+G2L.TopBar.Size = UDim2.new(1, 0, 0, 35)
 G2L.TopBar.BackgroundTransparency = 1
 G2L.TopBar.ZIndex = 5
 G2L.TopBar.Parent = G2L.Main
@@ -100,47 +100,71 @@ G2L.Title.BackgroundTransparency = 1
 G2L.Title.Text = "CHAT SERVIDOR SPWNCUB"
 G2L.Title.Font = FONTE_PIXEL
 G2L.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-G2L.Title.TextSize = 16
+G2L.Title.TextSize = 15
 G2L.Title.TextXAlignment = Enum.TextXAlignment.Left
 G2L.Title.ZIndex = 5
 G2L.Title.Parent = G2L.TopBar
 
--- BOTÃO DE FECHAR SCRIPT
+-- BOTÃO FECHAR
 G2L.CloseBtn = Instance.new("ImageButton")
 G2L.CloseBtn.Name = "CloseBtn"
-G2L.CloseBtn.Size = UDim2.new(0, 24, 0, 24)
-G2L.CloseBtn.Position = UDim2.new(1, -34, 0.5, -12)
+G2L.CloseBtn.Size = UDim2.new(0, 22, 0, 22)
+G2L.CloseBtn.Position = UDim2.new(1, -30, 0.5, -11)
 G2L.CloseBtn.BackgroundTransparency = 1
 G2L.CloseBtn.Image = ID_BOTAO_FECHAR
 G2L.CloseBtn.ZIndex = 6
 G2L.CloseBtn.Parent = G2L.TopBar
 
--- BOTÃO DE SELEÇÃO / CÓPIA
+-- BOTÃO SELEÇÃO
 G2L.SelectBtn = Instance.new("ImageButton")
 G2L.SelectBtn.Name = "SelectBtn"
-G2L.SelectBtn.Size = UDim2.new(0, 22, 0, 22)
-G2L.SelectBtn.Position = UDim2.new(1, -64, 0.5, -11)
+G2L.SelectBtn.Size = UDim2.new(0, 20, 0, 20)
+G2L.SelectBtn.Position = UDim2.new(1, -58, 0.5, -10)
 G2L.SelectBtn.BackgroundTransparency = 1
 G2L.SelectBtn.Image = ID_BOTAO_SELECAO
 G2L.SelectBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.SelectBtn.ZIndex = 6
 G2L.SelectBtn.Parent = G2L.TopBar
 
--- BOTÃO DE ESCOPO (LOCAL / GLOBAL)
+-- BOTÃO ESCOPO
 G2L.ScopeBtn = Instance.new("ImageButton")
 G2L.ScopeBtn.Name = "ScopeBtn"
-G2L.ScopeBtn.Size = UDim2.new(0, 20, 0, 20)
-G2L.ScopeBtn.Position = UDim2.new(1, -92, 0.5, -10)
+G2L.ScopeBtn.Size = UDim2.new(0, 18, 0, 18)
+G2L.ScopeBtn.Position = UDim2.new(1, -84, 0.5, -9)
 G2L.ScopeBtn.BackgroundTransparency = 1
 G2L.ScopeBtn.Image = ID_BOTAO_ESCOPO
 G2L.ScopeBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.ScopeBtn.ZIndex = 6
 G2L.ScopeBtn.Parent = G2L.TopBar
 
+---------------------------------------------------------------------
+-- BARRA DE ABAS DESLIZANTE (TAB BAR)
+---------------------------------------------------------------------
+G2L.TabBar = Instance.new("ScrollingFrame")
+G2L.TabBar.Name = "TabBar"
+G2L.TabBar.Size = UDim2.new(1, -20, 0, 24)
+G2L.TabBar.Position = UDim2.new(0, 10, 0, 35)
+G2L.TabBar.BackgroundTransparency = 1
+G2L.TabBar.ScrollBarThickness = 2
+G2L.TabBar.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150)
+G2L.TabBar.CanvasSize = UDim2.new(0, 0, 0, 0)
+G2L.TabBar.ZIndex = 6
+G2L.TabBar.Parent = G2L.Main
+
+local TabBarLayout = Instance.new("UIListLayout")
+TabBarLayout.FillDirection = Enum.FillDirection.Horizontal
+TabBarLayout.Padding = UDim.new(0, 5)
+TabBarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TabBarLayout.Parent = G2L.TabBar
+
+TabBarLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    G2L.TabBar.CanvasSize = UDim2.new(0, TabBarLayout.AbsoluteContentSize.X + 5, 0, 0)
+end)
+
 -- LINHA DIVISÓRIA SUPERIOR
 G2L.TopDivider = Instance.new("Frame")
 G2L.TopDivider.Size = UDim2.new(1, -20, 0, 1)
-G2L.TopDivider.Position = UDim2.new(0, 10, 0, 38)
+G2L.TopDivider.Position = UDim2.new(0, 10, 0, 62)
 G2L.TopDivider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 G2L.TopDivider.BackgroundTransparency = 0.8
 G2L.TopDivider.BorderSizePixel = 0
@@ -151,7 +175,7 @@ G2L.CenterSymbol = Instance.new("ImageLabel")
 G2L.CenterSymbol.Name = "SpwnSymbol"
 G2L.CenterSymbol.AnchorPoint = Vector2.new(0.5, 0.5)
 G2L.CenterSymbol.Size = UDim2.new(0, 130, 0, 130)
-G2L.CenterSymbol.Position = UDim2.new(0.5, 0, 0.5, -5)
+G2L.CenterSymbol.Position = UDim2.new(0.5, 0, 0.5, 0)
 G2L.CenterSymbol.BackgroundTransparency = 1
 G2L.CenterSymbol.Image = ID_SIMBOLO_CENTRAL
 G2L.CenterSymbol.ImageColor3 = Color3.fromRGB(255, 255, 255)
@@ -160,14 +184,12 @@ G2L.CenterSymbol.ZIndex = 1
 G2L.CenterSymbol.Parent = G2L.Main
 
 ---------------------------------------------------------------------
--- CONTÊINERES DE HISTÓRICO PADRÃO
+-- HISTÓRICOS DE CHAT
 ---------------------------------------------------------------------
-
--- HISTÓRICO SERVIDOR
 G2L.ServerHistory = Instance.new("ScrollingFrame")
 G2L.ServerHistory.Name = "ServerHistory"
-G2L.ServerHistory.Size = UDim2.new(1, -24, 1, -100)
-G2L.ServerHistory.Position = UDim2.new(0, 12, 0, 44)
+G2L.ServerHistory.Size = UDim2.new(1, -24, 1, -120)
+G2L.ServerHistory.Position = UDim2.new(0, 12, 0, 68)
 G2L.ServerHistory.BackgroundTransparency = 1
 G2L.ServerHistory.ScrollBarThickness = 3
 G2L.ServerHistory.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
@@ -181,11 +203,10 @@ ServerLayout.Padding = UDim.new(0, 3)
 ServerLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ServerLayout.Parent = G2L.ServerHistory
 
--- HISTÓRICO GLOBAL
 G2L.GlobalHistory = Instance.new("ScrollingFrame")
 G2L.GlobalHistory.Name = "GlobalHistory"
-G2L.GlobalHistory.Size = UDim2.new(1, -24, 1, -100)
-G2L.GlobalHistory.Position = UDim2.new(0, 12, 0, 44)
+G2L.GlobalHistory.Size = UDim2.new(1, -24, 1, -120)
+G2L.GlobalHistory.Position = UDim2.new(0, 12, 0, 68)
 G2L.GlobalHistory.BackgroundTransparency = 1
 G2L.GlobalHistory.ScrollBarThickness = 3
 G2L.GlobalHistory.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
@@ -199,29 +220,239 @@ GlobalLayout.Padding = UDim.new(0, 3)
 GlobalLayout.SortOrder = Enum.SortOrder.LayoutOrder
 GlobalLayout.Parent = G2L.GlobalHistory
 
--- FUNÇÃO PARA ALTERNAR A VISIBILIDADE DE TODAS AS ABAS
+---------------------------------------------------------------------
+-- POP-UP DE NOTIFICAÇÃO DE MENSAGEM PRIVADA (TOAST)
+---------------------------------------------------------------------
+local ToastFrame = Instance.new("Frame")
+ToastFrame.Name = "PV_Toast"
+ToastFrame.Size = UDim2.new(0.9, 0, 0, 42)
+ToastFrame.Position = UDim2.new(0.05, 0, 0, -50)
+ToastFrame.BackgroundColor3 = Color3.fromRGB(20, 24, 30)
+ToastFrame.BackgroundTransparency = 0.15
+ToastFrame.BorderSizePixel = 0
+ToastFrame.Visible = false
+ToastFrame.ZIndex = 10
+ToastFrame.Parent = G2L.Main
+
+local ToastCorner = Instance.new("UICorner")
+ToastCorner.CornerRadius = UDim.new(0, 6)
+ToastCorner.Parent = ToastFrame
+
+local ToastStroke = Instance.new("UIStroke")
+ToastStroke.Color = Color3.fromRGB(255, 200, 50)
+ToastStroke.Thickness = 1
+ToastStroke.Parent = ToastFrame
+
+local ToastText = Instance.new("TextLabel")
+ToastText.Size = UDim2.new(1, -110, 1, 0)
+ToastText.Position = UDim2.new(0, 10, 0, 0)
+ToastText.BackgroundTransparency = 1
+ToastText.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToastText.Font = FONTE_MENSAGENS
+ToastText.TextSize = 13
+ToastText.TextXAlignment = Enum.TextXAlignment.Left
+ToastText.TextTruncate = Enum.TextTruncate.AtEnd
+ToastText.ZIndex = 11
+ToastText.Parent = ToastFrame
+
+local ToastGoBtn = Instance.new("TextButton")
+ToastGoBtn.Size = UDim2.new(0, 60, 0, 24)
+ToastGoBtn.Position = UDim2.new(1, -98, 0.5, -12)
+ToastGoBtn.BackgroundColor3 = Color3.fromRGB(40, 160, 80)
+ToastGoBtn.Text = "IR AO PV"
+ToastGoBtn.Font = FONTE_PIXEL
+ToastGoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToastGoBtn.TextSize = 11
+ToastGoBtn.ZIndex = 11
+ToastGoBtn.Parent = ToastFrame
+
+local ToastGoCorner = Instance.new("UICorner")
+ToastGoCorner.CornerRadius = UDim.new(0, 4)
+ToastGoCorner.Parent = ToastGoBtn
+
+local ToastCloseBtn = Instance.new("ImageButton")
+ToastCloseBtn.Size = UDim2.new(0, 16, 0, 16)
+ToastCloseBtn.Position = UDim2.new(1, -26, 0.5, -8)
+ToastCloseBtn.BackgroundTransparency = 1
+ToastCloseBtn.Image = ID_BOTAO_FECHAR
+ToastCloseBtn.ZIndex = 11
+ToastCloseBtn.Parent = ToastFrame
+
+local toastTimerThread = nil
+
+local function OcultarToast()
+    ToastFrame.Visible = false
+    ToastFrame.Position = UDim2.new(0.05, 0, 0, -50)
+end
+
+ToastCloseBtn.MouseButton1Click:Connect(OcultarToast)
+
+-- CONTROLE DAS ABAS
 local function OcultarTodasAsAbas()
     G2L.ServerHistory.Visible = false
     G2L.GlobalHistory.Visible = false
-    for _, aba in pairs(abasPrivadas) do
-        if aba.HistoryFrame then
-            aba.HistoryFrame.Visible = false
+    for _, data in pairs(abasPrivadas) do
+        if data.HistoryFrame then
+            data.HistoryFrame.Visible = false
         end
     end
 end
 
--- ALTERNAR MODO GLOBAL / SERVIDOR VIA BOTÃO
-G2L.ScopeBtn.MouseButton1Click:Connect(function()
+local criarAbaPrivada -- Declaração antecipada
+
+local function SelecionarAba(nomeAba)
     OcultarTodasAsAbas()
-    modoGlobal = not modoGlobal
-    if modoGlobal then
-        abaAtual = "GLOBAL"
+    abaAtual = nomeAba
+
+    if nomeAba == "SERVER" then
+        modoGlobal = false
+        destinatarioPrivado = nil
+        G2L.Title.Text = "CHAT SERVIDOR SPWNCUB"
+        G2L.ServerHistory.Visible = true
+    elseif nomeAba == "GLOBAL" then
+        modoGlobal = true
+        destinatarioPrivado = nil
         G2L.Title.Text = "CHAT GLOBAL SPWNCUB"
         G2L.GlobalHistory.Visible = true
     else
-        abaAtual = "SERVER"
-        G2L.Title.Text = "CHAT SERVIDOR SPWNCUB"
-        G2L.ServerHistory.Visible = true
+        destinatarioPrivado = nomeAba
+        G2L.Title.Text = "PV: @" .. string.upper(nomeAba)
+        if abasPrivadas[nomeAba] then
+            abasPrivadas[nomeAba].UnreadCount = 0
+            abasPrivadas[nomeAba].TabBtn.Text = "@" .. nomeAba
+            abasPrivadas[nomeAba].HistoryFrame.Visible = true
+        end
+    end
+end
+
+local function CriarBotaoAbaFixa(texto, abaId, layoutOrder)
+    local btn = Instance.new("TextButton")
+    btn.Name = "Tab_" .. abaId
+    btn.Size = UDim2.new(0, 75, 1, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(45, 48, 55)
+    btn.Text = texto
+    btn.Font = FONTE_PIXEL
+    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
+    btn.TextSize = 12
+    btn.LayoutOrder = layoutOrder
+    btn.ZIndex = 7
+    btn.Parent = G2L.TabBar
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        SelecionarAba(abaId)
+    end)
+    return btn
+end
+
+CriarBotaoAbaFixa("Servidor", "SERVER", 1)
+CriarBotaoAbaFixa("Global", "GLOBAL", 2)
+
+-- CRIAR OU OBTER ABA PRIVADA DE UM JOGADOR
+criarAbaPrivada = function(targetUsername)
+    if abasPrivadas[targetUsername] then
+        return abasPrivadas[targetUsername]
+    end
+
+    -- Frame do Histórico Privado
+    local historyFrame = Instance.new("ScrollingFrame")
+    historyFrame.Name = "PV_" .. targetUsername
+    historyFrame.Size = UDim2.new(1, -24, 1, -120)
+    historyFrame.Position = UDim2.new(0, 12, 0, 68)
+    historyFrame.BackgroundTransparency = 1
+    historyFrame.ScrollBarThickness = 3
+    historyFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
+    historyFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    historyFrame.ZIndex = 6
+    historyFrame.Visible = false
+    historyFrame.Parent = G2L.Main
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 3)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = historyFrame
+
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        historyFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+    end)
+
+    -- Botão da Aba na TabBar
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Name = "Tab_PV_" .. targetUsername
+    tabBtn.Size = UDim2.new(0, 95, 1, 0)
+    tabBtn.BackgroundColor3 = Color3.fromRGB(55, 45, 25)
+    tabBtn.Text = "@" .. targetUsername
+    tabBtn.Font = FONTE_PIXEL
+    tabBtn.TextColor3 = Color3.fromRGB(255, 200, 80)
+    tabBtn.TextSize = 11
+    tabBtn.LayoutOrder = 10
+    tabBtn.ZIndex = 7
+    tabBtn.Parent = G2L.TabBar
+
+    local tabCorner = Instance.new("UICorner")
+    tabCorner.CornerRadius = UDim.new(0, 4)
+    tabCorner.Parent = tabBtn
+
+    local tabCloseBtn = Instance.new("ImageButton")
+    tabCloseBtn.Size = UDim2.new(0, 12, 0, 12)
+    tabCloseBtn.Position = UDim2.new(1, -15, 0.5, -6)
+    tabCloseBtn.BackgroundTransparency = 1
+    tabCloseBtn.Image = ID_BOTAO_FECHAR
+    tabCloseBtn.ZIndex = 8
+    tabCloseBtn.Parent = tabBtn
+
+    tabBtn.MouseButton1Click:Connect(function()
+        SelecionarAba(targetUsername)
+    end)
+
+    tabCloseBtn.MouseButton1Click:Connect(function()
+        tabBtn.Visible = false
+        historyFrame.Visible = false
+        if abaAtual == targetUsername then
+            SelecionarAba(modoGlobal and "GLOBAL" or "SERVER")
+        end
+    end)
+
+    abasPrivadas[targetUsername] = {
+        HistoryFrame = historyFrame,
+        TabBtn = tabBtn,
+        UnreadCount = 0,
+        Layout = layout
+    }
+
+    return abasPrivadas[targetUsername]
+end
+
+-- DISPARAR AVISO TOAST DE MENSAGEM PRIVADA
+local function DispararToast(senderUsername, message)
+    ToastText.Text = string.format("<font color='rgb(255,200,50)'>@%s:</font> %s", senderUsername, message)
+    ToastText.RichText = true
+    ToastFrame.Visible = true
+    ToastFrame.Position = UDim2.new(0.05, 0, 0, 5)
+
+    if toastTimerThread then task.cancel(toastTimerThread) end
+
+    ToastGoBtn.MouseButton1Click:Connect(function()
+        OcultarToast()
+        local data = criarAbaPrivada(senderUsername)
+        data.TabBtn.Visible = true
+        SelecionarAba(senderUsername)
+    end)
+
+    toastTimerThread = task.delay(5, function()
+        OcultarToast()
+    end)
+end
+
+-- ALTERNAR ESCOPO COM BOTÃO SUPERIOR
+G2L.ScopeBtn.MouseButton1Click:Connect(function()
+    if modoGlobal then
+        SelecionarAba("SERVER")
+    else
+        SelecionarAba("GLOBAL")
     end
 end)
 
@@ -229,15 +460,15 @@ end)
 G2L.SelectBtn.MouseButton1Click:Connect(function()
     modoSelecaoAtivo = not modoSelecaoAtivo
     if modoSelecaoAtivo then
-        G2L.SelectBtn.Size = UDim2.new(0, 26, 0, 26)
-        G2L.SelectBtn.Position = UDim2.new(1, -66, 0.5, -13)
+        G2L.SelectBtn.Size = UDim2.new(0, 24, 0, 24)
+        G2L.SelectBtn.Position = UDim2.new(1, -60, 0.5, -12)
     else
-        G2L.SelectBtn.Size = UDim2.new(0, 22, 0, 22)
-        G2L.SelectBtn.Position = UDim2.new(1, -64, 0.5, -11)
+        G2L.SelectBtn.Size = UDim2.new(0, 20, 0, 20)
+        G2L.SelectBtn.Position = UDim2.new(1, -58, 0.5, -10)
     end
 end)
 
--- INDICADOR INFERIOR DE MENSAGEM DIRETA (PRIVADO)
+-- INDICADOR INFERIOR DE MENSAGEM DIRETA
 local TargetIndicator = Instance.new("Frame")
 TargetIndicator.Size = UDim2.new(1, -16, 0, 20)
 TargetIndicator.Position = UDim2.new(0, 8, 1, -66)
@@ -260,7 +491,6 @@ TargetText.TextSize = 13
 TargetText.TextXAlignment = Enum.TextXAlignment.Left
 TargetText.Parent = TargetIndicator
 
--- BOTÃO COM O MESMO ID DA TOPBAR PARA FECHAR CONVERSA PRIVADA
 local CancelTargetBtn = Instance.new("ImageButton")
 CancelTargetBtn.Name = "CancelTargetBtn"
 CancelTargetBtn.Size = UDim2.new(0, 16, 0, 16)
@@ -270,72 +500,11 @@ CancelTargetBtn.Image = ID_BOTAO_FECHAR
 CancelTargetBtn.ZIndex = 7
 CancelTargetBtn.Parent = TargetIndicator
 
-local function FecharConversaPrivada()
-    if destinatarioPrivado and abasPrivadas[destinatarioPrivado] then
-        -- Oculta a aba da conversa privada sem apagar seu histórico
-        abasPrivadas[destinatarioPrivado].HistoryFrame.Visible = false
-    end
-
+CancelTargetBtn.MouseButton1Click:Connect(function()
     destinatarioPrivado = nil
     TargetIndicator.Visible = false
-
-    -- Retorna para o chat padrão
-    OcultarTodasAsAbas()
-    if modoGlobal then
-        abaAtual = "GLOBAL"
-        G2L.Title.Text = "CHAT GLOBAL SPWNCUB"
-        G2L.GlobalHistory.Visible = true
-    else
-        abaAtual = "SERVER"
-        G2L.Title.Text = "CHAT SERVIDOR SPWNCUB"
-        G2L.ServerHistory.Visible = true
-    end
-end
-
-CancelTargetBtn.MouseButton1Click:Connect(FecharConversaPrivada)
-
--- CRIAR/OBTER ABA DE CHAT PRIVADO COM UM JOGADOR
-local function AbrirAbaPrivada(targetUsername)
-    destinatarioPrivado = targetUsername
-    TargetText.Text = "Mensagem Direta para: @" .. targetUsername
-    TargetIndicator.Visible = true
-
-    OcultarTodasAsAbas()
-    abaAtual = targetUsername
-    G2L.Title.Text = "PV: @" .. string.upper(targetUsername)
-
-    if not abasPrivadas[targetUsername] then
-        -- Cria novo Frame de histórico dedicado
-        local historyFrame = Instance.new("ScrollingFrame")
-        historyFrame.Name = "PV_" .. targetUsername
-        historyFrame.Size = UDim2.new(1, -24, 1, -100)
-        historyFrame.Position = UDim2.new(0, 12, 0, 44)
-        historyFrame.BackgroundTransparency = 1
-        historyFrame.ScrollBarThickness = 3
-        historyFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
-        historyFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-        historyFrame.ZIndex = 6
-        historyFrame.Visible = true
-        historyFrame.Parent = G2L.Main
-
-        local layout = Instance.new("UIListLayout")
-        layout.Padding = UDim.new(0, 3)
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Parent = historyFrame
-
-        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            historyFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
-        end)
-
-        abasPrivadas[targetUsername] = {
-            HistoryFrame = historyFrame,
-            Layout = layout
-        }
-    else
-        -- Reabre a aba existente sem apagar mensagens passadas
-        abasPrivadas[targetUsername].HistoryFrame.Visible = true
-    end
-end
+    SelecionarAba(modoGlobal and "GLOBAL" or "SERVER")
+end)
 
 -- ÁREA INFERIOR DE INPUT
 G2L.BottomArea = Instance.new("Frame")
@@ -382,7 +551,7 @@ local function MostrarBubbleChat(username, message)
     end
 end
 
--- ADICIONAR MENSAGEM AO HISTÓRICO ADEQUADO
+-- ADICIONAR MENSAGEM
 local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mode, targetUser)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -5, 0, 18)
@@ -407,16 +576,23 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
     btn.TextWrapped = true
     btn.ZIndex = 6
 
-    -- DEFINIÇÃO DA ABA ALVO DA MENSAGEM
     local targetContainer = G2L.ServerHistory
 
     if isPrivate then
         local otherUser = isMe and targetUser or username
         if otherUser then
-            if not abasPrivadas[otherUser] then
-                AbrirAbaPrivada(otherUser)
+            local abaData = criarAbaPrivada(otherUser)
+            abaData.TabBtn.Visible = true
+            targetContainer = abaData.HistoryFrame
+
+            -- Gerencia notificações se não estiver na aba do remetente
+            if abaAtual ~= otherUser then
+                abaData.UnreadCount = abaData.UnreadCount + 1
+                abaData.TabBtn.Text = string.format("@%s (%d)", otherUser, abaData.UnreadCount)
+                if not isMe then
+                    DispararToast(username, msg)
+                end
             end
-            targetContainer = abasPrivadas[otherUser].HistoryFrame
         end
     elseif mode == "GLOBAL" then
         targetContainer = G2L.GlobalHistory
@@ -424,14 +600,18 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
 
     btn.Parent = targetContainer
 
-    -- CLICAR NO NOME ABRE A CONVERSA PRIVADA DEDICADA
+    -- CLIQUE PARA ABRIR PV
     btn.MouseButton1Click:Connect(function()
         if not modoSelecaoAtivo and username ~= Player.Name then
-            AbrirAbaPrivada(username)
+            local data = criarAbaPrivada(username)
+            data.TabBtn.Visible = true
+            SelecionarAba(username)
+            TargetText.Text = "Mensagem Direta para: @" .. username
+            TargetIndicator.Visible = true
         end
     end)
 
-    -- COPIAR EM MODO DE SELEÇÃO
+    -- MODO DE SELEÇÃO / COPIAR
     local pressTimer
     local isHolding = false
 
@@ -469,7 +649,7 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
     MostrarBubbleChat(username, msg)
 end
 
--- WEBSOCKET FILTRAGEM
+-- CONEXÃO E FILTRAGEM WEBSOCKET
 local socket
 local running = true
 
@@ -526,7 +706,7 @@ end
 -- ENVIAR MENSAGEM
 local function EnviarMensagem()
     if socket and G2L.Input.Text ~= "" then
-        local modoEnvio = modoGlobal and "GLOBAL" or "SERVER"
+        local modoEnvio = (abaAtual == "GLOBAL" or (abaAtual ~= "SERVER" and modoGlobal)) and "GLOBAL" or "SERVER"
 
         local payload = {
             username = Player.Name, 
@@ -553,7 +733,7 @@ end
 G2L.SendBtn.MouseButton1Click:Connect(EnviarMensagem)
 G2L.Input.FocusLost:Connect(function(enter) if enter then EnviarMensagem() end end)
 
--- ARRASTE DA INTERFACE (DRAG)
+-- FUNÇÃO DE ARRASTE (DRAG)
 local function MakeDraggable(gui)
     local dragging, dragInput, dragStart, startPos
     gui.InputBegan:Connect(function(input)
