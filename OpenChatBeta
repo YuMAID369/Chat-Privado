@@ -9,10 +9,12 @@ local ID_NOTIFICACAO = "rbxassetid://130103945046316"
 local ID_SIMBOLO_CENTRAL = "rbxassetid://85337967115080"
 local ID_BOTAO_FECHAR = "rbxassetid://98235327129327"
 local ID_BOTAO_SELECAO = "rbxassetid://105157650009654"
+local ID_BOTAO_ESCOPO = "rbxassetid://10734950309"
 local ID_SOM_NOTIFICACAO = "rbxassetid://1293433423"
 
--- FONTE DO CHAT
-local FONTE_PADRAO = Enum.Font.Arcade
+-- DEFINIÇÃO DE FONTES
+local FONTE_PIXEL = Enum.Font.Arcade            -- Título e Placeholder "Digite uma Mensagem"
+local FONTE_MENSAGENS = Enum.Font.SourceSansBold -- Mensagens enviadas/recebidas (Fonte Normal e Visível)
 
 -- Prevenção de execução dupla e encerramento limpo
 if getgenv().custom_chat_loaded then
@@ -30,8 +32,13 @@ local UserInputService = game:GetService("UserInputService")
 local ChatService = game:GetService("Chat") 
 local Player = Players.LocalPlayer
 
--- Estado do Modo de Seleção/Cópia
+-- Identificador do servidor atual (JobId)
+local CURRENT_SERVER_ID = game.JobId ~= "" and game.JobId or "STUDIO_SERVER"
+
+-- Estados de Controle
 local modoSelecaoAtivo = false
+local modoGlobal = false 
+local destinatarioPrivado = nil 
 
 -- UI PRINCIPAL
 G2L.ScreenGui = Instance.new("ScreenGui")
@@ -56,20 +63,25 @@ G2L.ToggleButton.BackgroundTransparency = 1
 G2L.ToggleButton.Image = ID_NORMAL
 G2L.ToggleButton.Parent = G2L.ScreenGui
 
--- JANELA PRINCIPAL
+-- JANELA PRINCIPAL (Com transparência para ver o fundo do jogo)
 G2L.Main = Instance.new("Frame")
 G2L.Main.Name = "MainFrame"
-G2L.Main.Size = UDim2.new(0, 420, 0, 260)
-G2L.Main.Position = UDim2.new(0.5, -210, 0.5, -130)
-G2L.Main.BackgroundColor3 = Color3.fromRGB(13, 16, 19)
-G2L.Main.BackgroundTransparency = 0.05
+G2L.Main.Size = UDim2.new(0, 420, 0, 270)
+G2L.Main.Position = UDim2.new(0.5, -210, 0.5, -135)
+G2L.Main.BackgroundColor3 = Color3.fromRGB(30, 33, 38)
+G2L.Main.BackgroundTransparency = 0.25
 G2L.Main.BorderSizePixel = 0
 G2L.Main.Visible = false
 G2L.Main.Parent = G2L.ScreenGui
 
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.Parent = G2L.Main
+
+-- BORDA BRANCA
 G2L.MainStroke = Instance.new("UIStroke")
-G2L.MainStroke.Color = Color3.fromRGB(255, 255, 255)
-G2L.MainStroke.Thickness = 1.5
+G2L.MainStroke.Color = Color3.fromRGB(255, 255, 255) -- Borda ajustada para branco
+G2L.MainStroke.Thickness = 1.2
 G2L.MainStroke.Parent = G2L.Main
 
 -- TOPBAR
@@ -80,117 +92,183 @@ G2L.TopBar.ZIndex = 5
 G2L.TopBar.Parent = G2L.Main
 
 G2L.Title = Instance.new("TextLabel")
-G2L.Title.Size = UDim2.new(1, 0, 1, 0)
+G2L.Title.Size = UDim2.new(1, -130, 1, 0)
+G2L.Title.Position = UDim2.new(0, 15, 0, 0)
 G2L.Title.BackgroundTransparency = 1
 G2L.Title.Text = "CHAT PRIVADO SPWNCUB"
-G2L.Title.Font = FONTE_PADRAO
+G2L.Title.Font = FONTE_PIXEL
 G2L.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-G2L.Title.TextSize = 18
+G2L.Title.TextSize = 16
+G2L.Title.TextXAlignment = Enum.TextXAlignment.Left
 G2L.Title.ZIndex = 5
 G2L.Title.Parent = G2L.TopBar
 
 -- BOTÃO DE FECHAR
 G2L.CloseBtn = Instance.new("ImageButton")
 G2L.CloseBtn.Name = "CloseBtn"
-G2L.CloseBtn.Size = UDim2.new(0, 26, 0, 26)
-G2L.CloseBtn.Position = UDim2.new(1, -35, 0.5, -13)
+G2L.CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+G2L.CloseBtn.Position = UDim2.new(1, -34, 0.5, -12)
 G2L.CloseBtn.BackgroundTransparency = 1
 G2L.CloseBtn.Image = ID_BOTAO_FECHAR
 G2L.CloseBtn.ZIndex = 6
 G2L.CloseBtn.Parent = G2L.TopBar
 
--- NOVO BOTÃO DE SELEÇÃO / CÓPIA (COM EFEITO DE TAMANHO)
+-- BOTÃO DE SELEÇÃO / CÓPIA
 G2L.SelectBtn = Instance.new("ImageButton")
 G2L.SelectBtn.Name = "SelectBtn"
-G2L.SelectBtn.Size = UDim2.new(0, 24, 0, 24)
-G2L.SelectBtn.Position = UDim2.new(1, -68, 0.5, -12)
+G2L.SelectBtn.Size = UDim2.new(0, 22, 0, 22)
+G2L.SelectBtn.Position = UDim2.new(1, -64, 0.5, -11)
 G2L.SelectBtn.BackgroundTransparency = 1
 G2L.SelectBtn.Image = ID_BOTAO_SELECAO
 G2L.SelectBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.SelectBtn.ZIndex = 6
 G2L.SelectBtn.Parent = G2L.TopBar
 
--- ALTERNAR MODO DE SELEÇÃO (Aumenta/Diminui sem alterar a cor)
+-- BOTÃO DE ESCOPO (LOCAL / GLOBAL) - SEMPRE BRANCO
+G2L.ScopeBtn = Instance.new("ImageButton")
+G2L.ScopeBtn.Name = "ScopeBtn"
+G2L.ScopeBtn.Size = UDim2.new(0, 20, 0, 20)
+G2L.ScopeBtn.Position = UDim2.new(1, -92, 0.5, -10)
+G2L.ScopeBtn.BackgroundTransparency = 1
+G2L.ScopeBtn.Image = ID_BOTAO_ESCOPO
+G2L.ScopeBtn.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Mantido em branco
+G2L.ScopeBtn.ZIndex = 6
+G2L.ScopeBtn.Parent = G2L.TopBar
+
+-- ALTERNAR ESCOPO (LOCAL / GLOBAL)
+G2L.ScopeBtn.MouseButton1Click:Connect(function()
+    modoGlobal = not modoGlobal
+    if modoGlobal then
+        G2L.Title.Text = "CHAT GLOBAL SPWNCUB"
+    else
+        G2L.Title.Text = "CHAT PRIVADO SPWNCUB"
+    end
+    G2L.ScopeBtn.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Permanece branco ao alternar
+end)
+
+-- ALTERNAR MODO DE SELEÇÃO
 G2L.SelectBtn.MouseButton1Click:Connect(function()
     modoSelecaoAtivo = not modoSelecaoAtivo
     if modoSelecaoAtivo then
-        -- Aumenta levemente e ajusta a posição para manter centralizado
-        G2L.SelectBtn.Size = UDim2.new(0, 28, 0, 28)
-        G2L.SelectBtn.Position = UDim2.new(1, -70, 0.5, -14)
+        G2L.SelectBtn.Size = UDim2.new(0, 26, 0, 26)
+        G2L.SelectBtn.Position = UDim2.new(1, -66, 0.5, -13)
     else
-        -- Volta ao tamanho e posição originais
-        G2L.SelectBtn.Size = UDim2.new(0, 24, 0, 24)
-        G2L.SelectBtn.Position = UDim2.new(1, -68, 0.5, -12)
+        G2L.SelectBtn.Size = UDim2.new(0, 22, 0, 22)
+        G2L.SelectBtn.Position = UDim2.new(1, -64, 0.5, -11)
     end
 end)
 
 -- LINHA DIVISÓRIA SUPERIOR
 G2L.TopDivider = Instance.new("Frame")
-G2L.TopDivider.Size = UDim2.new(1, 0, 0, 1)
-G2L.TopDivider.Position = UDim2.new(0, 0, 0, 40)
+G2L.TopDivider.Size = UDim2.new(1, -20, 0, 1)
+G2L.TopDivider.Position = UDim2.new(0, 10, 0, 38)
 G2L.TopDivider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+G2L.TopDivider.BackgroundTransparency = 0.8
 G2L.TopDivider.BorderSizePixel = 0
 G2L.TopDivider.Parent = G2L.Main
 
--- SÍMBOLO CENTRAL
+-- SÍMBOLO CENTRAL SPWN (Perfeitamente Centralizado)
 G2L.CenterSymbol = Instance.new("ImageLabel")
-G2L.CenterSymbol.Size = UDim2.new(0, 120, 0, 120)
-G2L.CenterSymbol.Position = UDim2.new(0.5, -60, 0.5, -45)
+G2L.CenterSymbol.Name = "SpwnSymbol"
+G2L.CenterSymbol.AnchorPoint = Vector2.new(0.5, 0.5)
+G2L.CenterSymbol.Size = UDim2.new(0, 130, 0, 130)
+G2L.CenterSymbol.Position = UDim2.new(0.5, 0, 0.5, -5)
 G2L.CenterSymbol.BackgroundTransparency = 1
 G2L.CenterSymbol.Image = ID_SIMBOLO_CENTRAL
 G2L.CenterSymbol.ImageColor3 = Color3.fromRGB(255, 255, 255)
-G2L.CenterSymbol.ImageTransparency = 0.85
+G2L.CenterSymbol.ImageTransparency = 0.88
 G2L.CenterSymbol.ZIndex = 1
 G2L.CenterSymbol.Parent = G2L.Main
 
 -- HISTÓRICO DE CHAT
 G2L.ChatHistory = Instance.new("ScrollingFrame")
-G2L.ChatHistory.Size = UDim2.new(1, -20, 1, -95)
-G2L.ChatHistory.Position = UDim2.new(0, 10, 0, 45)
+G2L.ChatHistory.Size = UDim2.new(1, -24, 1, -100)
+G2L.ChatHistory.Position = UDim2.new(0, 12, 0, 44)
 G2L.ChatHistory.BackgroundTransparency = 1
 G2L.ChatHistory.ScrollBarThickness = 3
-G2L.ChatHistory.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+G2L.ChatHistory.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
 G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, 0)
-G2L.ChatHistory.ZIndex = 5
+G2L.ChatHistory.ZIndex = 6
 G2L.ChatHistory.Parent = G2L.Main
 
 G2L.Layout = Instance.new("UIListLayout")
-G2L.Layout.Padding = UDim.new(0, 4)
+G2L.Layout.Padding = UDim.new(0, 3)
 G2L.Layout.SortOrder = Enum.SortOrder.LayoutOrder
 G2L.Layout.Parent = G2L.ChatHistory
 
+-- INDICADOR DE PRIVADO (SUSSURRO)
+local TargetIndicator = Instance.new("Frame")
+TargetIndicator.Size = UDim2.new(1, -16, 0, 20)
+TargetIndicator.Position = UDim2.new(0, 8, 1, -66)
+TargetIndicator.BackgroundColor3 = Color3.fromRGB(20, 35, 25)
+TargetIndicator.Visible = false
+TargetIndicator.ZIndex = 6
+TargetIndicator.Parent = G2L.Main
+
+local TargetCorner = Instance.new("UICorner")
+TargetCorner.CornerRadius = UDim.new(0, 4)
+TargetCorner.Parent = TargetIndicator
+
+local TargetText = Instance.new("TextLabel")
+TargetText.Size = UDim2.new(1, -25, 1, 0)
+TargetText.Position = UDim2.new(0, 6, 0, 0)
+TargetText.BackgroundTransparency = 1
+TargetText.TextColor3 = Color3.fromRGB(120, 255, 140)
+TargetText.Font = FONTE_MENSAGENS
+TargetText.TextSize = 13
+TargetText.TextXAlignment = Enum.TextXAlignment.Left
+TargetText.Parent = TargetIndicator
+
+local CancelTargetBtn = Instance.new("TextButton")
+CancelTargetBtn.Size = UDim2.new(0, 20, 1, 0)
+CancelTargetBtn.Position = UDim2.new(1, -20, 0, 0)
+CancelTargetBtn.BackgroundTransparency = 1
+CancelTargetBtn.Text = "X"
+CancelTargetBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+CancelTargetBtn.Font = FONTE_PIXEL
+CancelTargetBtn.TextSize = 12
+CancelTargetBtn.Parent = TargetIndicator
+
+CancelTargetBtn.MouseButton1Click:Connect(function()
+    destinatarioPrivado = nil
+    TargetIndicator.Visible = false
+end)
+
 -- ÁREA INFERIOR DE INPUT
 G2L.BottomArea = Instance.new("Frame")
-G2L.BottomArea.Size = UDim2.new(1, -12, 0, 36)
-G2L.BottomArea.Position = UDim2.new(0, 6, 1, -42)
-G2L.BottomArea.BackgroundColor3 = Color3.fromRGB(5, 7, 9)
+G2L.BottomArea.Size = UDim2.new(1, -16, 0, 38)
+G2L.BottomArea.Position = UDim2.new(0, 8, 1, -46)
+G2L.BottomArea.BackgroundColor3 = Color3.fromRGB(12, 14, 18)
+G2L.BottomArea.BackgroundTransparency = 0.15
 G2L.BottomArea.BorderSizePixel = 0
+G2L.BottomArea.ZIndex = 6
 G2L.BottomArea.Parent = G2L.Main
 
-G2L.BottomStroke = Instance.new("UIStroke")
-G2L.BottomStroke.Color = Color3.fromRGB(40, 50, 60)
-G2L.BottomStroke.Thickness = 1
-G2L.BottomStroke.Parent = G2L.BottomArea
+local BottomCorner = Instance.new("UICorner")
+BottomCorner.CornerRadius = UDim.new(0, 8)
+BottomCorner.Parent = G2L.BottomArea
 
 G2L.Input = Instance.new("TextBox")
-G2L.Input.Size = UDim2.new(1, -50, 1, 0)
-G2L.Input.Position = UDim2.new(0, 10, 0, 0)
+G2L.Input.Size = UDim2.new(1, -45, 1, 0)
+G2L.Input.Position = UDim2.new(0, 12, 0, 0)
 G2L.Input.BackgroundTransparency = 1
 G2L.Input.Text = ""
 G2L.Input.TextColor3 = Color3.fromRGB(255, 255, 255)
 G2L.Input.PlaceholderText = "Digite uma Mensagem..."
-G2L.Input.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+G2L.Input.PlaceholderColor3 = Color3.fromRGB(160, 160, 160)
 G2L.Input.TextXAlignment = Enum.TextXAlignment.Left
 G2L.Input.TextSize = 14
-G2L.Input.Font = FONTE_PADRAO
+G2L.Input.Font = FONTE_PIXEL
+G2L.Input.ZIndex = 7
 G2L.Input.Parent = G2L.BottomArea
 
 G2L.SendBtn = Instance.new("ImageButton")
-G2L.SendBtn.Size = UDim2.new(0, 22, 0, 22)
-G2L.SendBtn.Position = UDim2.new(1, -32, 0.5, -11)
+G2L.SendBtn.Size = UDim2.new(0, 20, 0, 20)
+G2L.SendBtn.Position = UDim2.new(1, -28, 0.5, -10)
 G2L.SendBtn.BackgroundTransparency = 1
 G2L.SendBtn.Image = "rbxassetid://18940312887"
 G2L.SendBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+G2L.SendBtn.ZIndex = 7
 G2L.SendBtn.Parent = G2L.BottomArea
 
 -- LOGICA DE MENSAGENS E BUBBLE
@@ -201,25 +279,36 @@ local function MostrarBubbleChat(username, message)
     end
 end
 
-local function AdicionarMensagem(username, displayname, msg, isMe)
+local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -5, 0, 18)
     btn.BackgroundTransparency = 1
     btn.RichText = true
-    btn.Font = FONTE_PADRAO
-    btn.TextSize = 14
+    btn.Font = FONTE_MENSAGENS
+    btn.TextSize = 15
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.AutoButtonColor = false
 
-    local nameColor = isMe and "rgb(255,100,100)" or "rgb(190,100,255)"
-    btn.Text = string.format("<font color='%s'>%s:</font> <font color='rgb(255,255,255)'>%s</font>", nameColor, displayname, msg)
+    local prefix = isPrivate and "<font color='rgb(255,200,50)'>[PV]</font> " or ""
+    local nameColor = isMe and "rgb(255,110,110)" or "rgb(180,130,255)"
+    
+    btn.Text = string.format("%s<font color='%s'>%s:</font> <font color='rgb(240,240,240)'>%s</font>", prefix, nameColor, displayname, msg)
 
     btn.AutomaticSize = Enum.AutomaticSize.Y
     btn.TextWrapped = true
     btn.ZIndex = 6
     btn.Parent = G2L.ChatHistory
 
-    -- LÓGICA DE PRESSIONAMENTO CONTÍNUO (SEGURAR PARA COPIAR SILENCIOSAMENTE)
+    -- CLIQUE SIMPLES: SELECIONAR JOGADOR PARA SUSSURRAR
+    btn.MouseButton1Click:Connect(function()
+        if not modoSelecaoAtivo and username ~= Player.Name then
+            destinatarioPrivado = username
+            TargetText.Text = "Mensagem Direta para: @" .. username
+            TargetIndicator.Visible = true
+        end
+    end)
+
+    -- SEGURAR PARA COPIAR (MODO SELEÇÃO)
     local pressTimer
     local isHolding = false
 
@@ -276,8 +365,18 @@ local function ConnectWebSocket()
             if not running then return end
             local ok, data = pcall(function() return HttpService:JSONDecode(msg) end)
             if ok and data.message then
+                local isMe = (data.username == Player.Name)
+                local isPrivate = (data.target ~= nil)
+
+                -- Filtro Privado / Local
+                if isPrivate then
+                    if data.target ~= Player.Name and not isMe then return end
+                else
+                    if data.serverId ~= "GLOBAL" and data.serverId ~= CURRENT_SERVER_ID then return end
+                end
+
                 local dName = data.nickname or data.username
-                AdicionarMensagem(data.username, dName, data.message, data.username == Player.Name)
+                AdicionarMensagem(data.username, dName, data.message, isMe, isPrivate)
             end
         end)
 
@@ -300,13 +399,18 @@ end
 -- Botão Enviar
 local function EnviarMensagem()
     if socket and G2L.Input.Text ~= "" then
+        local payload = {
+            username = Player.Name, 
+            nickname = Player.DisplayName, 
+            message = G2L.Input.Text,
+            serverId = modoGlobal and "GLOBAL" or CURRENT_SERVER_ID,
+            target = destinatarioPrivado
+        }
+
         local success, err = pcall(function()
-            socket:Send(HttpService:JSONEncode({
-                username = Player.Name, 
-                nickname = Player.DisplayName, 
-                message = G2L.Input.Text
-            }))
+            socket:Send(HttpService:JSONEncode(payload))
         end)
+
         if not success then 
             warn("Falha no envio (Socket morto). Tentando reconectar...")
             ConnectWebSocket()
