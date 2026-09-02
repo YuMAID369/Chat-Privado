@@ -13,10 +13,10 @@ local ID_BOTAO_ESCOPO = "rbxassetid://10734950309"
 local ID_SOM_NOTIFICACAO = "rbxassetid://1293433423"
 
 -- DEFINIÇÃO DE FONTES
-local FONTE_PIXEL = Enum.Font.Arcade            -- Título e Placeholder "Digite uma Mensagem"
-local FONTE_MENSAGENS = Enum.Font.SourceSansBold -- Mensagens enviadas/recebidas (Fonte Normal e Visível)
+local FONTE_PIXEL = Enum.Font.Arcade
+local FONTE_MENSAGENS = Enum.Font.SourceSansBold
 
--- Prevenção de execução dupla e encerramento limpo
+-- Prevenção de execução dupla
 if getgenv().custom_chat_loaded then
     warn("Limpando execução anterior...")
     if game:GetService("CoreGui"):FindFirstChild("GlobalChat_Elite_V3") then
@@ -33,11 +33,11 @@ local ChatService = game:GetService("Chat")
 local Player = Players.LocalPlayer
 
 -- Identificador do servidor atual (JobId)
-local CURRENT_SERVER_ID = game.JobId ~= "" and game.JobId or "STUDIO_SERVER"
+local CURRENT_SERVER_ID = (game.JobId ~= "" and game.JobId) or "STUDIO_SERVER"
 
 -- Estados de Controle
 local modoSelecaoAtivo = false
-local modoGlobal = false 
+local modoGlobal = false -- false = Servidor/Privado, true = Global
 local destinatarioPrivado = nil 
 
 -- UI PRINCIPAL
@@ -54,7 +54,7 @@ NotificationSound.SoundId = ID_SOM_NOTIFICACAO
 NotificationSound.Volume = 1
 NotificationSound.Parent = G2L.ScreenGui
 
--- BOTAO TOGGLE
+-- BOTÃO TOGGLE
 G2L.ToggleButton = Instance.new("ImageButton")
 G2L.ToggleButton.Name = "ToggleChat"
 G2L.ToggleButton.Size = UDim2.new(0, 55, 0, 55)
@@ -63,7 +63,7 @@ G2L.ToggleButton.BackgroundTransparency = 1
 G2L.ToggleButton.Image = ID_NORMAL
 G2L.ToggleButton.Parent = G2L.ScreenGui
 
--- JANELA PRINCIPAL (Com transparência para ver o fundo do jogo)
+-- JANELA PRINCIPAL
 G2L.Main = Instance.new("Frame")
 G2L.Main.Name = "MainFrame"
 G2L.Main.Size = UDim2.new(0, 420, 0, 270)
@@ -80,7 +80,7 @@ MainCorner.Parent = G2L.Main
 
 -- BORDA BRANCA
 G2L.MainStroke = Instance.new("UIStroke")
-G2L.MainStroke.Color = Color3.fromRGB(255, 255, 255) -- Borda ajustada para branco
+G2L.MainStroke.Color = Color3.fromRGB(255, 255, 255)
 G2L.MainStroke.Thickness = 1.2
 G2L.MainStroke.Parent = G2L.Main
 
@@ -95,7 +95,7 @@ G2L.Title = Instance.new("TextLabel")
 G2L.Title.Size = UDim2.new(1, -130, 1, 0)
 G2L.Title.Position = UDim2.new(0, 15, 0, 0)
 G2L.Title.BackgroundTransparency = 1
-G2L.Title.Text = "CHAT PRIVADO SPWNCUB"
+G2L.Title.Text = "CHAT SERVIDOR SPWNCUB"
 G2L.Title.Font = FONTE_PIXEL
 G2L.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 G2L.Title.TextSize = 16
@@ -124,39 +124,16 @@ G2L.SelectBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.SelectBtn.ZIndex = 6
 G2L.SelectBtn.Parent = G2L.TopBar
 
--- BOTÃO DE ESCOPO (LOCAL / GLOBAL) - SEMPRE BRANCO
+-- BOTÃO DE ESCOPO (LOCAL / GLOBAL)
 G2L.ScopeBtn = Instance.new("ImageButton")
 G2L.ScopeBtn.Name = "ScopeBtn"
 G2L.ScopeBtn.Size = UDim2.new(0, 20, 0, 20)
 G2L.ScopeBtn.Position = UDim2.new(1, -92, 0.5, -10)
 G2L.ScopeBtn.BackgroundTransparency = 1
 G2L.ScopeBtn.Image = ID_BOTAO_ESCOPO
-G2L.ScopeBtn.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Mantido em branco
+G2L.ScopeBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.ScopeBtn.ZIndex = 6
 G2L.ScopeBtn.Parent = G2L.TopBar
-
--- ALTERNAR ESCOPO (LOCAL / GLOBAL)
-G2L.ScopeBtn.MouseButton1Click:Connect(function()
-    modoGlobal = not modoGlobal
-    if modoGlobal then
-        G2L.Title.Text = "CHAT GLOBAL SPWNCUB"
-    else
-        G2L.Title.Text = "CHAT PRIVADO SPWNCUB"
-    end
-    G2L.ScopeBtn.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Permanece branco ao alternar
-end)
-
--- ALTERNAR MODO DE SELEÇÃO
-G2L.SelectBtn.MouseButton1Click:Connect(function()
-    modoSelecaoAtivo = not modoSelecaoAtivo
-    if modoSelecaoAtivo then
-        G2L.SelectBtn.Size = UDim2.new(0, 26, 0, 26)
-        G2L.SelectBtn.Position = UDim2.new(1, -66, 0.5, -13)
-    else
-        G2L.SelectBtn.Size = UDim2.new(0, 22, 0, 22)
-        G2L.SelectBtn.Position = UDim2.new(1, -64, 0.5, -11)
-    end
-end)
 
 -- LINHA DIVISÓRIA SUPERIOR
 G2L.TopDivider = Instance.new("Frame")
@@ -167,7 +144,7 @@ G2L.TopDivider.BackgroundTransparency = 0.8
 G2L.TopDivider.BorderSizePixel = 0
 G2L.TopDivider.Parent = G2L.Main
 
--- SÍMBOLO CENTRAL SPWN (Perfeitamente Centralizado)
+-- SÍMBOLO CENTRAL SPWN
 G2L.CenterSymbol = Instance.new("ImageLabel")
 G2L.CenterSymbol.Name = "SpwnSymbol"
 G2L.CenterSymbol.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -180,23 +157,73 @@ G2L.CenterSymbol.ImageTransparency = 0.88
 G2L.CenterSymbol.ZIndex = 1
 G2L.CenterSymbol.Parent = G2L.Main
 
--- HISTÓRICO DE CHAT
-G2L.ChatHistory = Instance.new("ScrollingFrame")
-G2L.ChatHistory.Size = UDim2.new(1, -24, 1, -100)
-G2L.ChatHistory.Position = UDim2.new(0, 12, 0, 44)
-G2L.ChatHistory.BackgroundTransparency = 1
-G2L.ChatHistory.ScrollBarThickness = 3
-G2L.ChatHistory.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
-G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, 0)
-G2L.ChatHistory.ZIndex = 6
-G2L.ChatHistory.Parent = G2L.Main
+---------------------------------------------------------------------
+-- CRIANDO DOIS CONTÊINERES SEPARADOS PARA OS HISTÓRICOS DE CHAT
+---------------------------------------------------------------------
 
-G2L.Layout = Instance.new("UIListLayout")
-G2L.Layout.Padding = UDim.new(0, 3)
-G2L.Layout.SortOrder = Enum.SortOrder.LayoutOrder
-G2L.Layout.Parent = G2L.ChatHistory
+-- HISTÓRICO DO CHAT SERVIDOR (PRIVADO)
+G2L.ServerHistory = Instance.new("ScrollingFrame")
+G2L.ServerHistory.Name = "ServerHistory"
+G2L.ServerHistory.Size = UDim2.new(1, -24, 1, -100)
+G2L.ServerHistory.Position = UDim2.new(0, 12, 0, 44)
+G2L.ServerHistory.BackgroundTransparency = 1
+G2L.ServerHistory.ScrollBarThickness = 3
+G2L.ServerHistory.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
+G2L.ServerHistory.CanvasSize = UDim2.new(0, 0, 0, 0)
+G2L.ServerHistory.ZIndex = 6
+G2L.ServerHistory.Visible = true
+G2L.ServerHistory.Parent = G2L.Main
 
--- INDICADOR DE PRIVADO (SUSSURRO)
+local ServerLayout = Instance.new("UIListLayout")
+ServerLayout.Padding = UDim.new(0, 3)
+ServerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ServerLayout.Parent = G2L.ServerHistory
+
+-- HISTÓRICO DO CHAT GLOBAL
+G2L.GlobalHistory = Instance.new("ScrollingFrame")
+G2L.GlobalHistory.Name = "GlobalHistory"
+G2L.GlobalHistory.Size = UDim2.new(1, -24, 1, -100)
+G2L.GlobalHistory.Position = UDim2.new(0, 12, 0, 44)
+G2L.GlobalHistory.BackgroundTransparency = 1
+G2L.GlobalHistory.ScrollBarThickness = 3
+G2L.GlobalHistory.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
+G2L.GlobalHistory.CanvasSize = UDim2.new(0, 0, 0, 0)
+G2L.GlobalHistory.ZIndex = 6
+G2L.GlobalHistory.Visible = false
+G2L.GlobalHistory.Parent = G2L.Main
+
+local GlobalLayout = Instance.new("UIListLayout")
+GlobalLayout.Padding = UDim.new(0, 3)
+GlobalLayout.SortOrder = Enum.SortOrder.LayoutOrder
+GlobalLayout.Parent = G2L.GlobalHistory
+
+-- ALTERNAR ENTRE AS ABAS
+G2L.ScopeBtn.MouseButton1Click:Connect(function()
+    modoGlobal = not modoGlobal
+    if modoGlobal then
+        G2L.Title.Text = "CHAT GLOBAL SPWNCUB"
+        G2L.ServerHistory.Visible = false
+        G2L.GlobalHistory.Visible = true
+    else
+        G2L.Title.Text = "CHAT SERVIDOR SPWNCUB"
+        G2L.GlobalHistory.Visible = false
+        G2L.ServerHistory.Visible = true
+    end
+end)
+
+-- MODO DE SELEÇÃO
+G2L.SelectBtn.MouseButton1Click:Connect(function()
+    modoSelecaoAtivo = not modoSelecaoAtivo
+    if modoSelecaoAtivo then
+        G2L.SelectBtn.Size = UDim2.new(0, 26, 0, 26)
+        G2L.SelectBtn.Position = UDim2.new(1, -66, 0.5, -13)
+    else
+        G2L.SelectBtn.Size = UDim2.new(0, 22, 0, 22)
+        G2L.SelectBtn.Position = UDim2.new(1, -64, 0.5, -11)
+    end
+end)
+
+-- INDICADOR DE MENSAGEM DIRETA (SUSSURRO)
 local TargetIndicator = Instance.new("Frame")
 TargetIndicator.Size = UDim2.new(1, -16, 0, 20)
 TargetIndicator.Position = UDim2.new(0, 8, 1, -66)
@@ -271,7 +298,7 @@ G2L.SendBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.SendBtn.ZIndex = 7
 G2L.SendBtn.Parent = G2L.BottomArea
 
--- LOGICA DE MENSAGENS E BUBBLE
+-- BUBBLE CHAT
 local function MostrarBubbleChat(username, message)
     local targetPlayer = Players:FindFirstChild(username)
     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
@@ -279,7 +306,8 @@ local function MostrarBubbleChat(username, message)
     end
 end
 
-local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate)
+-- ADICIONAR MENSAGEM NO HISTÓRICO CORRETO
+local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mode)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -5, 0, 18)
     btn.BackgroundTransparency = 1
@@ -289,17 +317,28 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate)
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.AutoButtonColor = false
 
-    local prefix = isPrivate and "<font color='rgb(255,200,50)'>[PV]</font> " or ""
+    local prefix = ""
+    if isPrivate then
+        prefix = "<font color='rgb(255,200,50)'>[PV]</font> "
+    elseif mode == "GLOBAL" then
+        prefix = "<font color='rgb(100,200,255)'>[GLOBAL]</font> "
+    end
+
     local nameColor = isMe and "rgb(255,110,110)" or "rgb(180,130,255)"
-    
     btn.Text = string.format("%s<font color='%s'>%s:</font> <font color='rgb(240,240,240)'>%s</font>", prefix, nameColor, displayname, msg)
 
     btn.AutomaticSize = Enum.AutomaticSize.Y
     btn.TextWrapped = true
     btn.ZIndex = 6
-    btn.Parent = G2L.ChatHistory
 
-    -- CLIQUE SIMPLES: SELECIONAR JOGADOR PARA SUSSURRAR
+    -- DEFINIR EM QUAL ABA A MENSAGEM FICARÁ
+    local targetHistoryContainer = G2L.ServerHistory
+    if mode == "GLOBAL" and not isPrivate then
+        targetHistoryContainer = G2L.GlobalHistory
+    end
+    btn.Parent = targetHistoryContainer
+
+    -- MENSAGEM DIRETA
     btn.MouseButton1Click:Connect(function()
         if not modoSelecaoAtivo and username ~= Player.Name then
             destinatarioPrivado = username
@@ -308,7 +347,7 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate)
         end
     end)
 
-    -- SEGURAR PARA COPIAR (MODO SELEÇÃO)
+    -- COPIAR (MODO SELEÇÃO)
     local pressTimer
     local isHolding = false
 
@@ -330,13 +369,11 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate)
     btn.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isHolding = false
-            if pressTimer then
-                task.cancel(pressTimer)
-            end
+            if pressTimer then task.cancel(pressTimer) end
         end
     end)
 
-    G2L.ChatHistory.CanvasPosition = Vector2.new(0, G2L.Layout.AbsoluteContentSize.Y)
+    targetHistoryContainer.CanvasPosition = Vector2.new(0, targetHistoryContainer.UIListLayout.AbsoluteContentSize.Y)
 
     if not G2L.Main.Visible and not isMe then
         G2L.ToggleButton.Image = ID_NOTIFICACAO
@@ -346,7 +383,7 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate)
     MostrarBubbleChat(username, msg)
 end
 
--- SISTEMA DE REDE
+-- CONEXÃO E FILTRAGEM WEBSOCKET
 local socket
 local running = true
 
@@ -359,51 +396,61 @@ local function ConnectWebSocket()
 
     if success and res then
         socket = res
-        print("SpwnCub V2 Chat Conectado com sucesso!")
+        print("SpwnCub Chat Conectado com Sucesso!")
 
         socket.OnMessage:Connect(function(msg)
             if not running then return end
             local ok, data = pcall(function() return HttpService:JSONDecode(msg) end)
+            
             if ok and data.message then
                 local isMe = (data.username == Player.Name)
-                local isPrivate = (data.target ~= nil)
+                local isPrivate = (data.target ~= nil and data.target ~= "")
 
-                -- Filtro Privado / Local
+                -- 1. SE FOR MENSAGEM PRIVADA PARA PESSOA ESPECÍFICA
                 if isPrivate then
-                    if data.target ~= Player.Name and not isMe then return end
-                else
-                    if data.serverId ~= "GLOBAL" and data.serverId ~= CURRENT_SERVER_ID then return end
+                    if data.target ~= Player.Name and not isMe then 
+                        return -- Não é para você -> Ignora
+                    end
+                
+                -- 2. SE FOR MENSAGEM DE SERVIDOR (LOCAL)
+                elseif data.mode == "SERVER" then
+                    if data.serverId ~= CURRENT_SERVER_ID then 
+                        return -- Pertence a outro servidor -> Ignora
+                    end
                 end
 
                 local dName = data.nickname or data.username
-                AdicionarMensagem(data.username, dName, data.message, isMe, isPrivate)
+                AdicionarMensagem(data.username, dName, data.message, isMe, isPrivate, data.mode)
             end
         end)
 
         socket.OnClose:Connect(function()
             if running then
-                warn("Conexão interrompida. Tentando reconectar...")
+                warn("Conexão encerrada. Reconectando em 5s...")
                 task.wait(5)
                 ConnectWebSocket()
             end
         end)
     else
         if running then
-            warn("Erro de conexão com o novo cluster. Reajustando em 5 segundos...")
+            warn("Erro de conexão. Reconectando em 5s...")
             task.wait(5)
             ConnectWebSocket()
         end
     end
 end
 
--- Botão Enviar
+-- ENVIAR MENSAGEM
 local function EnviarMensagem()
     if socket and G2L.Input.Text ~= "" then
+        local modoEnvio = modoGlobal and "GLOBAL" or "SERVER"
+
         local payload = {
             username = Player.Name, 
             nickname = Player.DisplayName, 
             message = G2L.Input.Text,
-            serverId = modoGlobal and "GLOBAL" or CURRENT_SERVER_ID,
+            mode = modoEnvio,
+            serverId = CURRENT_SERVER_ID,
             target = destinatarioPrivado
         }
 
@@ -412,19 +459,18 @@ local function EnviarMensagem()
         end)
 
         if not success then 
-            warn("Falha no envio (Socket morto). Tentando reconectar...")
+            warn("Falha no envio. Tentando reconectar...")
             ConnectWebSocket()
         end
+
         G2L.Input.Text = ""
-    elseif not socket then
-        warn("Chat desconectado. Aguarde a reconexão.")
     end
 end
 
 G2L.SendBtn.MouseButton1Click:Connect(EnviarMensagem)
 G2L.Input.FocusLost:Connect(function(enter) if enter then EnviarMensagem() end end)
 
--- FUNÇÃO DE ARRASTE
+-- FUNÇÃO DE ARRASTE (DRAG)
 local function MakeDraggable(gui)
     local dragging, dragInput, dragStart, startPos
     gui.InputBegan:Connect(function(input)
@@ -460,7 +506,6 @@ G2L.ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Ação do Botão de Fechar
 G2L.CloseBtn.MouseButton1Click:Connect(function()
     running = false
     getgenv().custom_chat_loaded = nil
@@ -468,13 +513,17 @@ G2L.CloseBtn.MouseButton1Click:Connect(function()
         pcall(function() socket:Close() end)
     end
     G2L.ScreenGui:Destroy()
-    print("Script de Chat Encerrado Definitivamente.")
+    print("Script Encerrado.")
 end)
 
 task.spawn(ConnectWebSocket)
 
-G2L.Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    G2L.ChatHistory.CanvasSize = UDim2.new(0, 0, 0, G2L.Layout.AbsoluteContentSize.Y + 10)
+ServerLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    G2L.ServerHistory.CanvasSize = UDim2.new(0, 0, 0, ServerLayout.AbsoluteContentSize.Y + 10)
+end)
+
+GlobalLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    G2L.GlobalHistory.CanvasSize = UDim2.new(0, 0, 0, GlobalLayout.AbsoluteContentSize.Y + 10)
 end)
 
 return G2L.ScreenGui
