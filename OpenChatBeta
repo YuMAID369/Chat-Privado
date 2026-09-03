@@ -80,7 +80,7 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 8)
 MainCorner.Parent = G2L.Main
 
--- BORDA BRANCA
+-- BORDA BRANCA DA UI PRINCIPAL
 G2L.MainStroke = Instance.new("UIStroke")
 G2L.MainStroke.Color = Color3.fromRGB(255, 255, 255)
 G2L.MainStroke.Thickness = 1.2
@@ -210,7 +210,7 @@ GlobalLayout.SortOrder = Enum.SortOrder.LayoutOrder
 GlobalLayout.Parent = G2L.GlobalHistory
 
 ---------------------------------------------------------------------
--- POP-UP DE NOTIFICAÇÃO (TOAST PRETO E BRANCO)
+-- POP-UP DE NOTIFICAÇÃO (TOAST PRETO COM BORDA BRANCA)
 ---------------------------------------------------------------------
 local ToastFrame = Instance.new("Frame")
 ToastFrame.Name = "PV_Toast"
@@ -233,7 +233,7 @@ ToastStroke.Thickness = 1.2
 ToastStroke.Parent = ToastFrame
 
 local ToastText = Instance.new("TextLabel")
-ToastText.Size = UDim2.new(1, -110, 1, 0)
+ToastText.Size = UDim2.new(1, -115, 1, 0)
 ToastText.Position = UDim2.new(0, 10, 0, 0)
 ToastText.BackgroundTransparency = 1
 ToastText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -244,8 +244,9 @@ ToastText.TextTruncate = Enum.TextTruncate.AtEnd
 ToastText.ZIndex = 11
 ToastText.Parent = ToastFrame
 
+-- BOTÃO "IR AO PV" COM BORDA APENAS NO BOTÃO (NÃO NA ESCRITA)
 local ToastGoBtn = Instance.new("TextButton")
-ToastGoBtn.Size = UDim2.new(0, 65, 0, 24)
+ToastGoBtn.Size = UDim2.new(0, 68, 0, 24)
 ToastGoBtn.Position = UDim2.new(1, -100, 0.5, -12)
 ToastGoBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 ToastGoBtn.Text = "IR AO PV"
@@ -280,6 +281,20 @@ local function OcultarToast()
 end
 
 ToastCloseBtn.MouseButton1Click:Connect(OcultarToast)
+
+-- FUNÇÃO PARA AJUSTAR A ALTURA DOS HISTÓRICOS (EVITA COBRIR MENSAGENS)
+local function AjustarAlturaHistoricos(indicadorVisivel)
+    local novaAltura = indicadorVisivel and UDim2.new(1, -24, 1, -145) or UDim2.new(1, -24, 1, -120)
+    
+    G2L.ServerHistory.Size = novaAltura
+    G2L.GlobalHistory.Size = novaAltura
+    
+    for _, data in pairs(abasPrivadas) do
+        if data.HistoryFrame then
+            data.HistoryFrame.Size = novaAltura
+        end
+    end
+end
 
 -- CONTROLE DAS ABAS
 local function OcultarTodasAsAbas()
@@ -408,6 +423,13 @@ criarAbaPrivada = function(targetUsername)
     tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
     tabLayout.Parent = tabContainer
 
+    local tabCloseBtn = Instance.new("ImageButton")
+    tabCloseBtn.Size = UDim2.new(0, 12, 0, 12)
+    tabCloseBtn.BackgroundTransparency = 1
+    tabCloseBtn.Image = ID_BOTAO_FECHAR
+    tabCloseBtn.ZIndex = 8
+    tabCloseBtn.Parent = tabContainer
+
     local tabBtn = Instance.new("TextButton")
     tabBtn.Name = "Tab_PV_" .. targetUsername
     tabBtn.Size = UDim2.new(0, 0, 1, 0)
@@ -419,13 +441,6 @@ criarAbaPrivada = function(targetUsername)
     tabBtn.TextSize = 13
     tabBtn.ZIndex = 7
     tabBtn.Parent = tabContainer
-
-    local tabCloseBtn = Instance.new("ImageButton")
-    tabCloseBtn.Size = UDim2.new(0, 12, 0, 12)
-    tabCloseBtn.BackgroundTransparency = 1
-    tabCloseBtn.Image = ID_BOTAO_FECHAR
-    tabCloseBtn.ZIndex = 8
-    tabCloseBtn.Parent = tabContainer
 
     tabBtn.MouseButton1Click:Connect(function()
         SelecionarAba(targetUsername)
@@ -488,12 +503,12 @@ end)
 ---------------------------------------------------------------------
 local TargetIndicator = Instance.new("Frame")
 TargetIndicator.Size = UDim2.new(1, -16, 0, 20)
-TargetIndicator.Position = UDim2.new(0, 8, 1, -66)
+TargetIndicator.Position = UDim2.new(0, 8, 1, -68)
 TargetIndicator.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-TargetIndicator.BackgroundTransparency = 0.1
+TargetIndicator.BackgroundTransparency = 0.05
 TargetIndicator.BorderSizePixel = 0
 TargetIndicator.Visible = false
-TargetIndicator.ZIndex = 6
+TargetIndicator.ZIndex = 7
 TargetIndicator.Parent = G2L.Main
 
 local TargetCorner = Instance.new("UICorner")
@@ -513,6 +528,7 @@ TargetText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TargetText.Font = FONTE_MENSAGENS
 TargetText.TextSize = 13
 TargetText.TextXAlignment = Enum.TextXAlignment.Left
+TargetText.ZIndex = 8
 TargetText.Parent = TargetIndicator
 
 local CancelTargetBtn = Instance.new("ImageButton")
@@ -521,12 +537,13 @@ CancelTargetBtn.Size = UDim2.new(0, 16, 0, 16)
 CancelTargetBtn.Position = UDim2.new(1, -20, 0.5, -8)
 CancelTargetBtn.BackgroundTransparency = 1
 CancelTargetBtn.Image = ID_BOTAO_FECHAR
-CancelTargetBtn.ZIndex = 7
+CancelTargetBtn.ZIndex = 8
 CancelTargetBtn.Parent = TargetIndicator
 
 CancelTargetBtn.MouseButton1Click:Connect(function()
     destinatarioPrivado = nil
     TargetIndicator.Visible = false
+    AjustarAlturaHistoricos(false)
     SelecionarAba(modoGlobal and "GLOBAL" or "SERVER")
 end)
 
@@ -631,6 +648,7 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
             SelecionarAba(username)
             TargetText.Text = "Mensagem Direta para: @" .. username
             TargetIndicator.Visible = true
+            AjustarAlturaHistoricos(true)
         end
     end)
 
