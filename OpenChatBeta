@@ -244,26 +244,20 @@ ToastText.TextTruncate = Enum.TextTruncate.AtEnd
 ToastText.ZIndex = 11
 ToastText.Parent = ToastFrame
 
--- BOTÃO "IR AO PV" COM BORDA APENAS NO BOTÃO (NÃO NA ESCRITA)
+-- BOTÃO "IR AO PV" - TOTALMENTE LIMPO SEM BORDAS OU SOBREPOSIÇÕES
 local ToastGoBtn = Instance.new("TextButton")
 ToastGoBtn.Size = UDim2.new(0, 68, 0, 24)
 ToastGoBtn.Position = UDim2.new(1, -100, 0.5, -12)
 ToastGoBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ToastGoBtn.BackgroundTransparency = 1 -- Fundo transparente para a escrita ficar 100% isolada e pura
+ToastGoBtn.BorderSizePixel = 0
 ToastGoBtn.Text = "IR AO PV"
 ToastGoBtn.Font = FONTE_PIXEL
 ToastGoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToastGoBtn.TextSize = 11
+ToastGoBtn.TextStrokeTransparency = 1 -- Garante zero contorno/borda no texto
+ToastGoBtn.TextSize = 12
 ToastGoBtn.ZIndex = 11
 ToastGoBtn.Parent = ToastFrame
-
-local ToastGoCorner = Instance.new("UICorner")
-ToastGoCorner.CornerRadius = UDim.new(0, 4)
-ToastGoCorner.Parent = ToastGoBtn
-
-local ToastGoStroke = Instance.new("UIStroke")
-ToastGoStroke.Color = Color3.fromRGB(255, 255, 255)
-ToastGoStroke.Thickness = 1
-ToastGoStroke.Parent = ToastGoBtn
 
 local ToastCloseBtn = Instance.new("ImageButton")
 ToastCloseBtn.Size = UDim2.new(0, 16, 0, 16)
