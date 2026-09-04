@@ -305,7 +305,7 @@ ActionMuteBtn.Font = FONTE_PIXEL
 ActionMuteBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 ActionMuteBtn.TextSize = 11
 ActionMuteBtn.ZIndex = 31
-ActionMuteBtn.Parent = ActionMuteBtn.Parent or ActionMenu
+ActionMuteBtn.Parent = ActionMenu
 
 local ActionMuteCorner = Instance.new("UICorner")
 ActionMuteCorner.CornerRadius = UDim.new(0, 4)
@@ -341,7 +341,7 @@ local MutedListTitle = Instance.new("TextLabel")
 MutedListTitle.Size = UDim2.new(1, 0, 0, 25)
 MutedListTitle.Position = UDim2.new(0, 0, 0, 5)
 MutedListTitle.BackgroundTransparency = 1
-MutedListTitle.Text = "Players Mutados"
+MutedListTitle.Text = "Players Multados"
 MutedListTitle.Font = FONTE_PIXEL
 MutedListTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 MutedListTitle.TextSize = 13
@@ -440,7 +440,7 @@ end
 ToastCloseBtn.MouseButton1Click:Connect(OcultarToast)
 
 -- FUNÇÕES DE CONTROLE DE MENSAGENS E FOCO
-local TargetIndicator -- Declaração antecipada
+local TargetIndicator
 
 local function AjustarAlturaHistoricos(indicadorVisivel)
     local novaPos, novaAlt
@@ -767,7 +767,6 @@ G2L.ModoFocoBtn.MouseButton1Click:Connect(function()
         G2L.TopDivider.Visible = false
         G2L.CenterSymbol.Visible = false
         
-        -- Expande levemente a UI principal
         G2L.Main.Size = SIZE_FOCO
     else
         G2L.ModoFocoBtn.Size = UDim2.new(0, 20, 0, 20)
@@ -777,11 +776,9 @@ G2L.ModoFocoBtn.MouseButton1Click:Connect(function()
         G2L.TopDivider.Visible = true
         G2L.CenterSymbol.Visible = true
         
-        -- Retorna ao tamanho padrão
         G2L.Main.Size = SIZE_NORMAL
     end
     
-    -- Atualizar o tamanho do texto de todas as mensagens
     for _, list in pairs(historicoMensagensInstancias) do
         for _, btn in ipairs(list) do
             if btn then
@@ -825,7 +822,6 @@ UserInputService.InputBegan:Connect(function(input)
             local btnPos = G2L.MutePlayerBtn.AbsolutePosition
             local btnSize = G2L.MutePlayerBtn.AbsoluteSize
 
-            -- Garante que não feche ao clicar no próprio botão MutePlayer
             local clickOnBtn = (mousePos.X >= btnPos.X and mousePos.X <= btnPos.X + btnSize.X and mousePos.Y >= btnPos.Y and mousePos.Y <= btnPos.Y + btnSize.Y)
 
             if not clickOnBtn and (mousePos.X < pos.X or mousePos.X > pos.X + size.X or mousePos.Y < pos.Y or mousePos.Y > pos.Y + size.Y) then
@@ -941,7 +937,6 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.AutoButtonColor = false
 
-    -- Se o jogador já estiver mutado, esconde a mensagem
     if jogadoresMutados[username] and not isMe then
         btn.Visible = false
     end
@@ -983,7 +978,6 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
 
     btn.Parent = targetContainer
 
-    -- Armazena no dicionário para podermos esconder/mostrar dinamicamente no mute
     if not historicoMensagensInstancias[username] then
         historicoMensagensInstancias[username] = {}
     end
@@ -999,7 +993,6 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
             ActionMenu.Visible = true
             MutedListMenu.Visible = false
 
-            -- Conexão do Botão PV
             local pvConn, muteConn
             pvConn = ActionPvBtn.MouseButton1Click:Connect(function()
                 ActionMenu.Visible = false
@@ -1014,7 +1007,6 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
                 AjustarAlturaHistoricos(true)
             end)
 
-            -- Conexão do Botão Silenciar
             muteConn = ActionMuteBtn.MouseButton1Click:Connect(function()
                 ActionMenu.Visible = false
                 muteConn:Disconnect()
@@ -1129,11 +1121,12 @@ local function EnviarMensagem()
         }
 
         local success, err = pcall(function()
-            socket:Send(HttpService:JSONDecode(payload))
+            -- CORRIGIDO: alterado JSONDecode para JSONEncode
+            socket:Send(HttpService:JSONEncode(payload))
         end)
 
         if not success then 
-            warn("Falha no envio. Tentando reconectar...")
+            warn("Falha no envio. Tentando reconectar... Erro:", err)
             ConnectWebSocket()
         end
 
