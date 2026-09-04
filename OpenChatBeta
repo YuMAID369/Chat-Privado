@@ -10,6 +10,7 @@ local ID_SIMBOLO_CENTRAL = "rbxassetid://85337967115080"
 local ID_BOTAO_FECHAR = "rbxassetid://98235327129327"
 local ID_BOTAO_SELECAO = "rbxassetid://105157650009654"
 local ID_SOM_NOTIFICACAO = "rbxassetid://1293433423"
+local ID_BOTAO_PASTA = "rbxassetid://138942561519505"
 
 -- IDs de Ícones
 local ID_MUTE_NOTIF = "rbxassetid://97625127106275"
@@ -33,6 +34,7 @@ getgenv().custom_chat_loaded = true
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
+local MarketplaceService = game:GetService("MarketplaceService")
 local ChatService = game:GetService("Chat") 
 local Player = Players.LocalPlayer
 
@@ -48,12 +50,18 @@ local destinatarioPrivado = nil
 local abaAtual = "SERVER"
 local abasPrivadas = {} 
 local botoesAbasFixas = {}
-local jogadoresMutados = {} -- { [username] = true }
-local historicoMensagensInstancias = {} -- Guarda referências das UIs de mensagem enviadas por cada player
+local jogadoresMutados = {}
+local historicoMensagensInstancias = {}
 
--- TAMANHOS PADRÃO DA INTERFACE (Ligeiramente aumentado no modo foco)
+-- TAMANHOS PADRÃO DA INTERFACE
 local SIZE_NORMAL = UDim2.new(0, 420, 0, 270)
 local SIZE_FOCO = UDim2.new(0, 480, 0, 320)
+
+-- ARMAZÉM DE IMAGENS LOCAL
+local savedImageIds = {
+    "134601196355279"
+}
+local selectedImageForAction = nil
 
 -- UI PRINCIPAL
 G2L.ScreenGui = Instance.new("ScreenGui")
@@ -223,7 +231,7 @@ G2L.ServerHistory.Visible = true
 G2L.ServerHistory.Parent = G2L.Main
 
 local ServerLayout = Instance.new("UIListLayout")
-ServerLayout.Padding = UDim.new(0, 1) -- Espaçamento reduzido
+ServerLayout.Padding = UDim.new(0, 1)
 ServerLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ServerLayout.Parent = G2L.ServerHistory
 
@@ -240,9 +248,162 @@ G2L.GlobalHistory.Visible = false
 G2L.GlobalHistory.Parent = G2L.Main
 
 local GlobalLayout = Instance.new("UIListLayout")
-GlobalLayout.Padding = UDim.new(0, 1) -- Espaçamento reduzido
+GlobalLayout.Padding = UDim.new(0, 1)
 GlobalLayout.SortOrder = Enum.SortOrder.LayoutOrder
 GlobalLayout.Parent = G2L.GlobalHistory
+
+---------------------------------------------------------------------
+-- PAINEL LATERAL DE ARMAZÉM E POP-UP DE AÇÕES
+---------------------------------------------------------------------
+local GalleryPanel = Instance.new("Frame")
+GalleryPanel.Name = "GalleryPanel"
+GalleryPanel.Size = UDim2.new(0, 170, 1, 0)
+GalleryPanel.Position = UDim2.new(1, 10, 0, 0)
+GalleryPanel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+GalleryPanel.BorderSizePixel = 0
+GalleryPanel.Visible = false
+GalleryPanel.ZIndex = 20
+GalleryPanel.Parent = G2L.Main
+
+local GalleryCorner = Instance.new("UICorner")
+GalleryCorner.CornerRadius = UDim.new(0, 8)
+GalleryCorner.Parent = GalleryPanel
+
+local GalleryStroke = Instance.new("UIStroke")
+GalleryStroke.Color = Color3.fromRGB(255, 255, 255)
+GalleryStroke.Thickness = 1.2
+GalleryStroke.Parent = GalleryPanel
+
+local GalleryTitle = Instance.new("TextLabel")
+GalleryTitle.Size = UDim2.new(1, 0, 0, 25)
+GalleryTitle.Position = UDim2.new(0, 0, 0, 5)
+GalleryTitle.BackgroundTransparency = 1
+GalleryTitle.Text = "ARMAZÉM IMG"
+GalleryTitle.Font = FONTE_PIXEL
+GalleryTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+GalleryTitle.TextSize = 13
+GalleryTitle.ZIndex = 21
+GalleryTitle.Parent = GalleryPanel
+
+local ImageGrid = Instance.new("ScrollingFrame")
+ImageGrid.Name = "ImageGrid"
+ImageGrid.Size = UDim2.new(1, -12, 1, -70)
+ImageGrid.Position = UDim2.new(0, 6, 0, 32)
+ImageGrid.BackgroundTransparency = 1
+ImageGrid.ScrollBarThickness = 2
+ImageGrid.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+ImageGrid.ZIndex = 21
+ImageGrid.Parent = GalleryPanel
+
+local GridLayout = Instance.new("UIGridLayout")
+GridLayout.CellSize = UDim2.new(0, 72, 0, 72)
+GridLayout.CellPadding = UDim2.new(0, 6, 0, 6)
+GridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+GridLayout.Parent = ImageGrid
+
+GridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    ImageGrid.CanvasSize = UDim2.new(0, 0, 0, GridLayout.AbsoluteContentSize.Y + 5)
+end)
+
+local IdTextBox = Instance.new("TextBox")
+IdTextBox.Name = "IdTextBox"
+IdTextBox.Size = UDim2.new(1, -38, 0, 24)
+IdTextBox.Position = UDim2.new(0, 6, 1, -30)
+IdTextBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+IdTextBox.BorderSizePixel = 0
+IdTextBox.Text = ""
+IdTextBox.PlaceholderText = "ID da Imagem"
+IdTextBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
+IdTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+IdTextBox.Font = FONTE_PIXEL
+IdTextBox.TextSize = 11
+IdTextBox.ZIndex = 21
+IdTextBox.Parent = GalleryPanel
+
+local IdTextCorner = Instance.new("UICorner")
+IdTextCorner.CornerRadius = UDim.new(0, 4)
+IdTextCorner.Parent = IdTextBox
+
+local AddIdButton = Instance.new("TextButton")
+AddIdButton.Name = "AddIdButton"
+AddIdButton.Size = UDim2.new(0, 24, 0, 24)
+AddIdButton.Position = UDim2.new(1, -28, 1, -30)
+AddIdButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+AddIdButton.BorderSizePixel = 0
+AddIdButton.Text = "+"
+AddIdButton.Font = FONTE_PIXEL
+AddIdButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AddIdButton.TextSize = 14
+AddIdButton.ZIndex = 21
+AddIdButton.Parent = GalleryPanel
+
+local AddIdCorner = Instance.new("UICorner")
+AddIdCorner.CornerRadius = UDim.new(0, 4)
+AddIdCorner.Parent = AddIdButton
+
+-- POP-UP MODAL ("Enviar IMG ou Apagar")
+local ModalFrame = Instance.new("Frame")
+ModalFrame.Name = "ModalFrame"
+ModalFrame.Size = UDim2.new(0, 190, 0, 85)
+ModalFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+ModalFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+ModalFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+ModalFrame.BorderSizePixel = 0
+ModalFrame.Visible = false
+ModalFrame.ZIndex = 40
+ModalFrame.Parent = G2L.ScreenGui
+
+local ModalCorner = Instance.new("UICorner")
+ModalCorner.CornerRadius = UDim.new(0, 6)
+ModalCorner.Parent = ModalFrame
+
+local ModalStroke = Instance.new("UIStroke")
+ModalStroke.Color = Color3.fromRGB(255, 255, 255)
+ModalStroke.Thickness = 1.2
+ModalStroke.Parent = ModalFrame
+
+local ModalTitle = Instance.new("TextLabel")
+ModalTitle.Size = UDim2.new(1, 0, 0, 25)
+ModalTitle.Position = UDim2.new(0, 0, 0, 5)
+ModalTitle.BackgroundTransparency = 1
+ModalTitle.Text = "Opções de Imagem"
+ModalTitle.Font = FONTE_PIXEL
+ModalTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ModalTitle.TextSize = 12
+ModalTitle.ZIndex = 41
+ModalTitle.Parent = ModalFrame
+
+local SendImageBtn = Instance.new("TextButton")
+SendImageBtn.Size = UDim2.new(0.43, 0, 0, 28)
+SendImageBtn.Position = UDim2.new(0.05, 0, 0, 40)
+SendImageBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+SendImageBtn.BorderSizePixel = 0
+SendImageBtn.Text = "Enviar IMG"
+SendImageBtn.Font = FONTE_PIXEL
+SendImageBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SendImageBtn.TextSize = 10
+SendImageBtn.ZIndex = 41
+SendImageBtn.Parent = ModalFrame
+
+local SendImageCorner = Instance.new("UICorner")
+SendImageCorner.CornerRadius = UDim.new(0, 4)
+SendImageCorner.Parent = SendImageBtn
+
+local DeleteImageBtn = Instance.new("TextButton")
+DeleteImageBtn.Size = UDim2.new(0.43, 0, 0, 28)
+DeleteImageBtn.Position = UDim2.new(0.52, 0, 0, 40)
+DeleteImageBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+DeleteImageBtn.BorderSizePixel = 0
+DeleteImageBtn.Text = "Apagar"
+DeleteImageBtn.Font = FONTE_PIXEL
+DeleteImageBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+DeleteImageBtn.TextSize = 10
+DeleteImageBtn.ZIndex = 41
+DeleteImageBtn.Parent = ModalFrame
+
+local DeleteImageCorner = Instance.new("UICorner")
+DeleteImageCorner.CornerRadius = UDim.new(0, 4)
+DeleteImageCorner.Parent = DeleteImageBtn
 
 ---------------------------------------------------------------------
 -- MINI INTERFACE: CHAT PV OU SILENCIAR?
@@ -299,7 +460,7 @@ ActionMuteBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 ActionMuteBtn.BorderSizePixel = 0
 ActionMuteBtn.Text = "SILENCIAR"
 ActionMuteBtn.Font = FONTE_PIXEL
-ActionMuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255) -- Texto alterado para branco puro
+ActionMuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ActionMuteBtn.TextSize = 11
 ActionMuteBtn.ZIndex = 31
 ActionMuteBtn.Parent = ActionMenu
@@ -436,7 +597,7 @@ local TargetIndicator
 
 local function AjustarAlturaHistoricos(indicadorVisivel)
     local novaPos, novaAlt
-    
+
     if modoFocoAtivo then
         novaPos = UDim2.new(0, 12, 0, 40)
         novaAlt = indicadorVisivel and UDim2.new(1, -24, 1, -117) or UDim2.new(1, -24, 1, -92)
@@ -444,13 +605,13 @@ local function AjustarAlturaHistoricos(indicadorVisivel)
         novaPos = UDim2.new(0, 12, 0, 68)
         novaAlt = indicadorVisivel and UDim2.new(1, -24, 1, -145) or UDim2.new(1, -24, 1, -120)
     end
-    
+
     G2L.ServerHistory.Position = novaPos
     G2L.ServerHistory.Size = novaAlt
-    
+
     G2L.GlobalHistory.Position = novaPos
     G2L.GlobalHistory.Size = novaAlt
-    
+
     for _, data in pairs(abasPrivadas) do
         if data.HistoryFrame then
             data.HistoryFrame.Position = novaPos
@@ -557,7 +718,7 @@ local function criarAbaPrivada(targetUsername)
     historyFrame.Parent = G2L.Main
 
     local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 1) -- Espaçamento reduzido
+    layout.Padding = UDim.new(0, 1)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = historyFrame
 
@@ -634,7 +795,6 @@ local function FecharAbaPrivada(targetUsername)
     end
 end
 
--- LÓGICA DE APLICAR / REMOVER MUTE COMPLETO
 local function RedesenharListaMutados()
     for _, child in pairs(MutedScroll:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
@@ -652,10 +812,8 @@ local function RedesenharListaMutados()
         btn.Parent = MutedScroll
 
         btn.MouseButton1Click:Connect(function()
-            -- DESMUTAR JOGADOR
             jogadoresMutados[user] = nil
-            
-            -- Exibe as mensagens dele novamente
+
             if historicoMensagensInstancias[user] then
                 for _, msgBtn in ipairs(historicoMensagensInstancias[user]) do
                     if msgBtn and msgBtn.Parent then
@@ -674,7 +832,6 @@ local function SilenciarJogador(username)
 
     jogadoresMutados[username] = true
 
-    -- Esconde todas as mensagens já enviadas por ele
     if historicoMensagensInstancias[username] then
         for _, msgBtn in ipairs(historicoMensagensInstancias[username]) do
             if msgBtn and msgBtn.Parent then
@@ -683,10 +840,8 @@ local function SilenciarJogador(username)
         end
     end
 
-    -- Fecha o Chat PV se estiver aberto com ele
     FecharAbaPrivada(username)
 
-    -- Se o target indicator estiver direcionado a ele, limpa
     if destinatarioPrivado == username then
         destinatarioPrivado = nil
         if TargetIndicator then TargetIndicator.Visible = false end
@@ -719,6 +874,129 @@ local function DispararToast(senderUsername, message)
 end
 
 ---------------------------------------------------------------------
+-- LÓGICA DO ARMAZÉM DE IMAGENS E MODAL
+---------------------------------------------------------------------
+local function isPosInGui(guiObject, position)
+    if not guiObject or not guiObject.AbsolutePosition or not guiObject.Visible then return false end
+    local absPos = guiObject.AbsolutePosition
+    local absSize = guiObject.AbsoluteSize
+    return position.X >= absPos.X and position.X <= absPos.X + absSize.X
+        and position.Y >= absPos.Y and position.Y <= absPos.Y + absSize.Y
+end
+
+local function abrirModal(assetId, buttonObject)
+    selectedImageForAction = { id = assetId, button = buttonObject }
+    ModalFrame.Visible = true
+end
+
+local function fecharModal()
+    selectedImageForAction = nil
+    ModalFrame.Visible = false
+end
+
+SendImageBtn.MouseButton1Click:Connect(function()
+    if selectedImageForAction and socket then
+        local formattedId = "rbxassetid://" .. selectedImageForAction.id
+        local modoEnvio = (abaAtual == "GLOBAL" or (abaAtual ~= "SERVER" and modoGlobal)) and "GLOBAL" or "SERVER"
+
+        local payload = {
+            username = Player.Name,
+            nickname = Player.DisplayName,
+            message = formattedId,
+            mode = modoEnvio,
+            serverId = CURRENT_SERVER_ID,
+            target = destinatarioPrivado,
+            isImage = true
+        }
+
+        pcall(function()
+            socket:Send(HttpService:JSONEncode(payload))
+        end)
+
+        fecharModal()
+        GalleryPanel.Visible = false
+    end
+end)
+
+DeleteImageBtn.MouseButton1Click:Connect(function()
+    if selectedImageForAction then
+        local idToRemove = selectedImageForAction.id
+        for i, id in ipairs(savedImageIds) do
+            if id == idToRemove then
+                table.remove(savedImageIds, i)
+                break
+            end
+        end
+        if selectedImageForAction.button then
+            selectedImageForAction.button:Destroy()
+        end
+        fecharModal()
+    end
+end)
+
+local function validarEObterAsset(assetId)
+    local cleanId = tostring(assetId):gsub("%D", "")
+    if cleanId == "" then return false, nil end
+
+    local success, result = pcall(function()
+        return MarketplaceService:GetProductInfo(tonumber(cleanId), Enum.InfoType.Asset)
+    end)
+
+    if success and result then
+        if result.AssetTypeId == 1 or result.AssetTypeId == 13 then
+            return true, cleanId
+        end
+    end
+    return false, nil
+end
+
+local criarCardImagem
+
+function criarCardImagem(cleanId)
+    local imageBtn = Instance.new("ImageButton")
+    imageBtn.Name = "Img_" .. cleanId
+    imageBtn.Image = "rbxassetid://" .. cleanId
+    imageBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    imageBtn.BorderSizePixel = 1
+    imageBtn.BorderColor3 = Color3.fromRGB(60, 60, 60)
+    imageBtn.ZIndex = 22
+    imageBtn.Parent = ImageGrid
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 4)
+    btnCorner.Parent = imageBtn
+
+    imageBtn.MouseButton1Click:Connect(function()
+        abrirModal(cleanId, imageBtn)
+    end)
+end
+
+AddIdButton.MouseButton1Click:Connect(function()
+    local text = IdTextBox.Text
+    local ehValido, cleanId = validarEObterAsset(text)
+
+    if ehValido then
+        if not table.find(savedImageIds, cleanId) then
+            table.insert(savedImageIds, cleanId)
+            criarCardImagem(cleanId)
+            IdTextBox.Text = ""
+        else
+            IdTextBox.Text = "Já salvo!"
+            task.wait(1.2)
+            IdTextBox.Text = ""
+        end
+    else
+        IdTextBox.Text = "ID Inválido!"
+        task.wait(1.2)
+        IdTextBox.Text = ""
+    end
+end)
+
+for _, id in ipairs(savedImageIds) do
+    criarCardImagem(id)
+end
+
+---------------------------------------------------------------------
 -- EVENTOS DE BOTÕES E FECHAMENTO AUTOMÁTICO DE MENUS
 ---------------------------------------------------------------------
 G2L.SelectBtn.MouseButton1Click:Connect(function()
@@ -739,7 +1017,7 @@ G2L.MutePlayerBtn.MouseButton1Click:Connect(function()
         local mousePos = UserInputService:GetMouseLocation()
         MutedListMenu.Position = UDim2.new(0, mousePos.X - 100, 0, mousePos.Y - 35)
         RedesenharListaMutados()
-        
+
         G2L.MutePlayerBtn.Size = UDim2.new(0, 24, 0, 24)
         G2L.MutePlayerBtn.Position = UDim2.new(1, -88, 0.5, -12)
     else
@@ -750,27 +1028,27 @@ end)
 
 G2L.ModoFocoBtn.MouseButton1Click:Connect(function()
     modoFocoAtivo = not modoFocoAtivo
-    
+
     if modoFocoAtivo then
         G2L.ModoFocoBtn.Size = UDim2.new(0, 24, 0, 24)
         G2L.ModoFocoBtn.Position = UDim2.new(1, -116, 0.5, -12)
-        
+
         G2L.TabBar.Visible = false
         G2L.TopDivider.Visible = false
         G2L.CenterSymbol.Visible = false
-        
+
         G2L.Main.Size = SIZE_FOCO
     else
         G2L.ModoFocoBtn.Size = UDim2.new(0, 20, 0, 20)
         G2L.ModoFocoBtn.Position = UDim2.new(1, -114, 0.5, -10)
-        
+
         G2L.TabBar.Visible = true
         G2L.TopDivider.Visible = true
         G2L.CenterSymbol.Visible = true
-        
+
         G2L.Main.Size = SIZE_NORMAL
     end
-    
+
     for _, list in pairs(historicoMensagensInstancias) do
         for _, btn in ipairs(list) do
             if btn then
@@ -778,7 +1056,7 @@ G2L.ModoFocoBtn.MouseButton1Click:Connect(function()
             end
         end
     end
-    
+
     AjustarAlturaHistoricos(false)
 end)
 
@@ -795,11 +1073,17 @@ G2L.MuteNotifBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- FECHA OS POP-UPS AO CLICAR FORA
+-- FECHA OS POP-UPS E PAINÉIS AO CLICAR FORA
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         local mousePos = input.Position
-        
+
+        if GalleryPanel.Visible and not ModalFrame.Visible then
+            if not isPosInGui(GalleryPanel, mousePos) and not isPosInGui(G2L.OpenGalleryBtn, mousePos) then
+                GalleryPanel.Visible = false
+            end
+        end
+
         if ActionMenu.Visible then
             local pos = ActionMenu.AbsolutePosition
             local size = ActionMenu.AbsoluteSize
@@ -887,9 +1171,22 @@ local BottomCorner = Instance.new("UICorner")
 BottomCorner.CornerRadius = UDim.new(0, 8)
 BottomCorner.Parent = G2L.BottomArea
 
+G2L.OpenGalleryBtn = Instance.new("ImageButton")
+G2L.OpenGalleryBtn.Name = "OpenGalleryBtn"
+G2L.OpenGalleryBtn.Size = UDim2.new(0, 20, 0, 20)
+G2L.OpenGalleryBtn.Position = UDim2.new(0, 10, 0.5, -10)
+G2L.OpenGalleryBtn.BackgroundTransparency = 1
+G2L.OpenGalleryBtn.Image = ID_BOTAO_PASTA
+G2L.OpenGalleryBtn.ZIndex = 7
+G2L.OpenGalleryBtn.Parent = G2L.BottomArea
+
+G2L.OpenGalleryBtn.MouseButton1Click:Connect(function()
+    GalleryPanel.Visible = not GalleryPanel.Visible
+end)
+
 G2L.Input = Instance.new("TextBox")
-G2L.Input.Size = UDim2.new(1, -45, 1, 0)
-G2L.Input.Position = UDim2.new(0, 12, 0, 0)
+G2L.Input.Size = UDim2.new(1, -75, 1, 0)
+G2L.Input.Position = UDim2.new(0, 38, 0, 0)
 G2L.Input.BackgroundTransparency = 1
 G2L.Input.Text = ""
 G2L.Input.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -920,8 +1217,9 @@ end
 
 -- ADICIONAR MENSAGEM
 local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mode, targetUser)
+    local isImg = string.match(msg, "^rbxassetid://") ~= nil
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -5, 0, 18)
+    btn.Size = UDim2.new(1, -5, 0, isImg and 130 or 18)
     btn.BackgroundTransparency = 1
     btn.RichText = true
     btn.Font = FONTE_MENSAGENS
@@ -941,10 +1239,28 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
     end
 
     local nameColor = isMe and "rgb(255,110,110)" or "rgb(180,130,255)"
-    btn.Text = string.format("%s<font color='%s'>%s:</font> <font color='rgb(240,240,240)'>%s</font>", prefix, nameColor, displayname, msg)
 
-    btn.AutomaticSize = Enum.AutomaticSize.Y
-    btn.TextWrapped = true
+    if isImg then
+        btn.Text = string.format("%s<font color='%s'>%s:</font>", prefix, nameColor, displayname)
+        
+        local imgContainer = Instance.new("ImageLabel")
+        imgContainer.Size = UDim2.new(0, 110, 0, 110)
+        imgContainer.Position = UDim2.new(0, 0, 0, 20)
+        imgContainer.Image = msg
+        imgContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        imgContainer.BorderSizePixel = 0
+        imgContainer.ZIndex = 6
+        imgContainer.Parent = btn
+
+        local imgCorner = Instance.new("UICorner")
+        imgCorner.CornerRadius = UDim.new(0, 6)
+        imgCorner.Parent = imgContainer
+    else
+        btn.Text = string.format("%s<font color='%s'>%s:</font> <font color='rgb(240,240,240)'>%s</font>", prefix, nameColor, displayname, msg)
+        btn.AutomaticSize = Enum.AutomaticSize.Y
+        btn.TextWrapped = true
+    end
+
     btn.ZIndex = 6
 
     local targetContainer = G2L.ServerHistory
@@ -960,7 +1276,7 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
                 abaData.UnreadCount = abaData.UnreadCount + 1
                 abaData.TabBtn.Text = string.format("@%s (%d)", otherUser, abaData.UnreadCount)
                 if not isMe then
-                    DispararToast(username, msg)
+                    DispararToast(username, isImg and "[Imagem]" or msg)
                 end
             end
         end
@@ -1046,7 +1362,9 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
         end
     end
 
-    MostrarBubbleChat(username, msg)
+    if not isImg then
+        MostrarBubbleChat(username, msg)
+    end
 end
 
 -- WEBSOCKET
@@ -1059,7 +1377,6 @@ local function ConnectWebSocket()
     local success, res = pcall(function()
         return WebSocket.connect(wsUrl)
     end)
-
     if success and res then
         socket = res
         print("SpwnCub Chat Conectado com Sucesso!")
@@ -1067,7 +1384,7 @@ local function ConnectWebSocket()
         socket.OnMessage:Connect(function(msg)
             if not running then return end
             local ok, data = pcall(function() return HttpService:JSONDecode(msg) end)
-            
+
             if ok and data.message then
                 local isMe = (data.username == Player.Name)
                 local isPrivate = (data.target ~= nil and data.target ~= "")
