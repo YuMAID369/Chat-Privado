@@ -11,7 +11,7 @@ local ID_BOTAO_FECHAR = "rbxassetid://98235327129327"
 local ID_BOTAO_SELECAO = "rbxassetid://105157650009654"
 local ID_SOM_NOTIFICACAO = "rbxassetid://1293433423"
 
--- Novos IDs de Ícones
+-- IDs de Ícones
 local ID_MUTE_NOTIF = "rbxassetid://97625127106275"
 local ID_MUTE_PLAYER = "rbxassetid://112424947376515"
 local ID_MODO_FOCO = "rbxassetid://123611220469778"
@@ -36,21 +36,24 @@ local UserInputService = game:GetService("UserInputService")
 local ChatService = game:GetService("Chat") 
 local Player = Players.LocalPlayer
 
--- Identificador do servidor atual (JobId)
 local CURRENT_SERVER_ID = (game.JobId ~= "" and game.JobId) or "STUDIO_SERVER"
 
 -- Estados de Controle
 local modoSelecaoAtivo = false
-local modoMutePlayerAtivo = false
 local modoFocoAtivo = false
 local notificacaoSomAtiva = true
 
-local modoGlobal = false -- false = Servidor, true = Global
+local modoGlobal = false 
 local destinatarioPrivado = nil 
 local abaAtual = "SERVER"
-local abasPrivadas = {} -- { [username] = { HistoryFrame, TabBtn, UnreadCount, Layout } }
+local abasPrivadas = {} 
 local botoesAbasFixas = {}
-local jogadoresMutados = {} -- Lista local de players silenciados: { [username] = true }
+local jogadoresMutados = {} -- { [username] = true }
+local historicoMensagensInstancias = {} -- Guarda referências das UIs de mensagem enviadas por cada player
+
+-- TAMANHOS PADRÃO DA INTERFACE
+local SIZE_NORMAL = UDim2.new(0, 420, 0, 270)
+local SIZE_FOCO = UDim2.new(0, 460, 0, 300)
 
 -- UI PRINCIPAL
 G2L.ScreenGui = Instance.new("ScreenGui")
@@ -78,7 +81,7 @@ G2L.ToggleButton.Parent = G2L.ScreenGui
 -- JANELA PRINCIPAL
 G2L.Main = Instance.new("Frame")
 G2L.Main.Name = "MainFrame"
-G2L.Main.Size = UDim2.new(0, 420, 0, 270)
+G2L.Main.Size = SIZE_NORMAL
 G2L.Main.Position = UDim2.new(0.5, -210, 0.5, -135)
 G2L.Main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 G2L.Main.BackgroundTransparency = 0.1
@@ -90,7 +93,6 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 8)
 MainCorner.Parent = G2L.Main
 
--- BORDA BRANCA DA UI PRINCIPAL
 G2L.MainStroke = Instance.new("UIStroke")
 G2L.MainStroke.Color = Color3.fromRGB(255, 255, 255)
 G2L.MainStroke.Thickness = 1.2
@@ -115,7 +117,7 @@ G2L.Title.TextXAlignment = Enum.TextXAlignment.Left
 G2L.Title.ZIndex = 5
 G2L.Title.Parent = G2L.TopBar
 
--- BOTÃO FECHAR SCRIPT
+-- BOTÕES TOPBAR
 G2L.CloseBtn = Instance.new("ImageButton")
 G2L.CloseBtn.Name = "CloseBtn"
 G2L.CloseBtn.Size = UDim2.new(0, 22, 0, 22)
@@ -125,7 +127,6 @@ G2L.CloseBtn.Image = ID_BOTAO_FECHAR
 G2L.CloseBtn.ZIndex = 6
 G2L.CloseBtn.Parent = G2L.TopBar
 
--- BOTÃO SELEÇÃO / CÓPIA
 G2L.SelectBtn = Instance.new("ImageButton")
 G2L.SelectBtn.Name = "SelectBtn"
 G2L.SelectBtn.Size = UDim2.new(0, 20, 0, 20)
@@ -136,7 +137,6 @@ G2L.SelectBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.SelectBtn.ZIndex = 6
 G2L.SelectBtn.Parent = G2L.TopBar
 
--- BOTÃO MUTE PLAYER
 G2L.MutePlayerBtn = Instance.new("ImageButton")
 G2L.MutePlayerBtn.Name = "MutePlayerBtn"
 G2L.MutePlayerBtn.Size = UDim2.new(0, 20, 0, 20)
@@ -147,7 +147,6 @@ G2L.MutePlayerBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.MutePlayerBtn.ZIndex = 6
 G2L.MutePlayerBtn.Parent = G2L.TopBar
 
--- BOTÃO MODO FOCO / TELA LIMPA
 G2L.ModoFocoBtn = Instance.new("ImageButton")
 G2L.ModoFocoBtn.Name = "ModoFocoBtn"
 G2L.ModoFocoBtn.Size = UDim2.new(0, 20, 0, 20)
@@ -158,7 +157,6 @@ G2L.ModoFocoBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.ModoFocoBtn.ZIndex = 6
 G2L.ModoFocoBtn.Parent = G2L.TopBar
 
--- BOTÃO SILENCIAR NOTIFICAÇÕES (SOM)
 G2L.MuteNotifBtn = Instance.new("ImageButton")
 G2L.MuteNotifBtn.Name = "MuteNotifBtn"
 G2L.MuteNotifBtn.Size = UDim2.new(0, 20, 0, 20)
@@ -169,9 +167,7 @@ G2L.MuteNotifBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.MuteNotifBtn.ZIndex = 6
 G2L.MuteNotifBtn.Parent = G2L.TopBar
 
----------------------------------------------------------------------
--- BARRA DE ABAS DESLIZANTE (TRANSPARENTE)
----------------------------------------------------------------------
+-- BARRA DE ABAS
 G2L.TabBar = Instance.new("ScrollingFrame")
 G2L.TabBar.Name = "TabBar"
 G2L.TabBar.Size = UDim2.new(1, -20, 0, 24)
@@ -193,7 +189,6 @@ TabBarLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     G2L.TabBar.CanvasSize = UDim2.new(0, TabBarLayout.AbsoluteContentSize.X + 10, 0, 0)
 end)
 
--- LINHA DIVISÓRIA SUPERIOR
 G2L.TopDivider = Instance.new("Frame")
 G2L.TopDivider.Size = UDim2.new(1, -20, 0, 1)
 G2L.TopDivider.Position = UDim2.new(0, 10, 0, 62)
@@ -202,7 +197,6 @@ G2L.TopDivider.BackgroundTransparency = 0.8
 G2L.TopDivider.BorderSizePixel = 0
 G2L.TopDivider.Parent = G2L.Main
 
--- SÍMBOLO CENTRAL SPWN
 G2L.CenterSymbol = Instance.new("ImageLabel")
 G2L.CenterSymbol.Name = "SpwnSymbol"
 G2L.CenterSymbol.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -215,9 +209,7 @@ G2L.CenterSymbol.ImageTransparency = 0.88
 G2L.CenterSymbol.ZIndex = 1
 G2L.CenterSymbol.Parent = G2L.Main
 
----------------------------------------------------------------------
--- HISTÓRICOS DE CHAT
----------------------------------------------------------------------
+-- HISTÓRICOS
 G2L.ServerHistory = Instance.new("ScrollingFrame")
 G2L.ServerHistory.Name = "ServerHistory"
 G2L.ServerHistory.Size = UDim2.new(1, -24, 1, -120)
@@ -253,14 +245,144 @@ GlobalLayout.SortOrder = Enum.SortOrder.LayoutOrder
 GlobalLayout.Parent = G2L.GlobalHistory
 
 ---------------------------------------------------------------------
--- POP-UP DE NOTIFICAÇÃO (TOAST PRETO COM BORDA BRANCA)
+-- MINI INTERFACE: CHAT PV OU SILENCIAR?
+---------------------------------------------------------------------
+local ActionMenu = Instance.new("Frame")
+ActionMenu.Name = "ActionMenu"
+ActionMenu.Size = UDim2.new(0, 200, 0, 85)
+ActionMenu.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+ActionMenu.BorderSizePixel = 0
+ActionMenu.Visible = false
+ActionMenu.ZIndex = 30
+ActionMenu.Parent = G2L.ScreenGui
+
+local ActionCorner = Instance.new("UICorner")
+ActionCorner.CornerRadius = UDim.new(0, 6)
+ActionCorner.Parent = ActionMenu
+
+local ActionStroke = Instance.new("UIStroke")
+ActionStroke.Color = Color3.fromRGB(255, 255, 255)
+ActionStroke.Thickness = 1.2
+ActionStroke.Parent = ActionMenu
+
+local ActionTitle = Instance.new("TextLabel")
+ActionTitle.Size = UDim2.new(1, 0, 0, 25)
+ActionTitle.Position = UDim2.new(0, 0, 0, 5)
+ActionTitle.BackgroundTransparency = 1
+ActionTitle.Text = "Chat PV ou Silenciar?"
+ActionTitle.Font = FONTE_PIXEL
+ActionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActionTitle.TextSize = 13
+ActionTitle.ZIndex = 31
+ActionTitle.Parent = ActionMenu
+
+local ActionPvBtn = Instance.new("TextButton")
+ActionPvBtn.Size = UDim2.new(0.42, 0, 0, 30)
+ActionPvBtn.Position = UDim2.new(0.06, 0, 0, 40)
+ActionPvBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ActionPvBtn.Text = "CHAT PV"
+ActionPvBtn.Font = FONTE_PIXEL
+ActionPvBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActionPvBtn.TextSize = 11
+ActionPvBtn.ZIndex = 31
+ActionPvBtn.Parent = ActionMenu
+
+local ActionPvCorner = Instance.new("UICorner")
+ActionPvCorner.CornerRadius = UDim.new(0, 4)
+ActionPvCorner.Parent = ActionPvBtn
+
+local ActionPvStroke = Instance.new("UIStroke")
+ActionPvStroke.Color = Color3.fromRGB(255, 255, 255)
+ActionPvStroke.Thickness = 1
+ActionPvStroke.Parent = ActionPvBtn
+
+local ActionMuteBtn = Instance.new("TextButton")
+ActionMuteBtn.Size = UDim2.new(0.42, 0, 0, 30)
+ActionMuteBtn.Position = UDim2.new(0.52, 0, 0, 40)
+ActionMuteBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ActionMuteBtn.Text = "SILENCIAR"
+ActionMuteBtn.Font = FONTE_PIXEL
+ActionMuteBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ActionMuteBtn.TextSize = 11
+ActionMuteBtn.ZIndex = 31
+ActionMuteBtn.Parent = ActionMuteBtn.Parent or ActionMenu
+
+local ActionMuteCorner = Instance.new("UICorner")
+ActionMuteCorner.CornerRadius = UDim.new(0, 4)
+ActionMuteCorner.Parent = ActionMuteBtn
+
+local ActionMuteStroke = Instance.new("UIStroke")
+ActionMuteStroke.Color = Color3.fromRGB(255, 255, 255)
+ActionMuteStroke.Thickness = 1
+ActionMuteStroke.Parent = ActionMuteBtn
+
+---------------------------------------------------------------------
+-- MINI INTERFACE: LISTA DE PLAYERS MUTADOS
+---------------------------------------------------------------------
+local MutedListMenu = Instance.new("Frame")
+MutedListMenu.Name = "MutedListMenu"
+MutedListMenu.Size = UDim2.new(0, 200, 0, 160)
+MutedListMenu.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MutedListMenu.BorderSizePixel = 0
+MutedListMenu.Visible = false
+MutedListMenu.ZIndex = 30
+MutedListMenu.Parent = G2L.ScreenGui
+
+local MutedListCorner = Instance.new("UICorner")
+MutedListCorner.CornerRadius = UDim.new(0, 6)
+MutedListCorner.Parent = MutedListMenu
+
+local MutedListStroke = Instance.new("UIStroke")
+MutedListStroke.Color = Color3.fromRGB(255, 255, 255)
+MutedListStroke.Thickness = 1.2
+MutedListStroke.Parent = MutedListMenu
+
+local MutedListTitle = Instance.new("TextLabel")
+MutedListTitle.Size = UDim2.new(1, 0, 0, 25)
+MutedListTitle.Position = UDim2.new(0, 0, 0, 5)
+MutedListTitle.BackgroundTransparency = 1
+MutedListTitle.Text = "Players Mutados"
+MutedListTitle.Font = FONTE_PIXEL
+MutedListTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+MutedListTitle.TextSize = 13
+MutedListTitle.ZIndex = 31
+MutedListTitle.Parent = MutedListMenu
+
+local MutedListDivider = Instance.new("Frame")
+MutedListDivider.Size = UDim2.new(1, -20, 0, 1)
+MutedListDivider.Position = UDim2.new(0, 10, 0, 32)
+MutedListDivider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+MutedListDivider.BackgroundTransparency = 0.5
+MutedListDivider.BorderSizePixel = 0
+MutedListDivider.ZIndex = 31
+MutedListDivider.Parent = MutedListMenu
+
+local MutedScroll = Instance.new("ScrollingFrame")
+MutedScroll.Size = UDim2.new(1, -16, 1, -42)
+MutedScroll.Position = UDim2.new(0, 8, 0, 36)
+MutedScroll.BackgroundTransparency = 1
+MutedScroll.ScrollBarThickness = 3
+MutedScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+MutedScroll.ZIndex = 31
+MutedScroll.Parent = MutedListMenu
+
+local MutedScrollLayout = Instance.new("UIListLayout")
+MutedScrollLayout.Padding = UDim.new(0, 4)
+MutedScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+MutedScrollLayout.Parent = MutedScroll
+
+MutedScrollLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    MutedScroll.CanvasSize = UDim2.new(0, 0, 0, MutedScrollLayout.AbsoluteContentSize.Y + 5)
+end)
+
+---------------------------------------------------------------------
+-- POP-UP TOAST
 ---------------------------------------------------------------------
 local ToastFrame = Instance.new("Frame")
 ToastFrame.Name = "PV_Toast"
 ToastFrame.Size = UDim2.new(0.9, 0, 0, 42)
 ToastFrame.Position = UDim2.new(0.05, 0, 0, -50)
 ToastFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-ToastFrame.BackgroundTransparency = 0.05
 ToastFrame.BorderSizePixel = 0
 ToastFrame.Visible = false
 ToastFrame.ZIndex = 10
@@ -287,7 +409,6 @@ ToastText.TextTruncate = Enum.TextTruncate.AtEnd
 ToastText.ZIndex = 11
 ToastText.Parent = ToastFrame
 
--- BOTÃO "IR AO PV"
 local ToastGoBtn = Instance.new("TextButton")
 ToastGoBtn.Size = UDim2.new(0, 68, 0, 24)
 ToastGoBtn.Position = UDim2.new(1, -100, 0.5, -12)
@@ -297,7 +418,6 @@ ToastGoBtn.BorderSizePixel = 0
 ToastGoBtn.Text = "IR AO PV"
 ToastGoBtn.Font = FONTE_PIXEL
 ToastGoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToastGoBtn.TextStrokeTransparency = 1
 ToastGoBtn.TextSize = 12
 ToastGoBtn.ZIndex = 11
 ToastGoBtn.Parent = ToastFrame
@@ -319,7 +439,9 @@ end
 
 ToastCloseBtn.MouseButton1Click:Connect(OcultarToast)
 
--- FUNÇÃO PARA AJUSTAR A ALTURA DOS HISTÓRICOS
+-- FUNÇÕES DE CONTROLE DE MENSAGENS E FOCO
+local TargetIndicator -- Declaração antecipada
+
 local function AjustarAlturaHistoricos(indicadorVisivel)
     local novaPos, novaAlt
     
@@ -345,7 +467,6 @@ local function AjustarAlturaHistoricos(indicadorVisivel)
     end
 end
 
--- CONTROLE DAS ABAS
 local function OcultarTodasAsAbas()
     G2L.ServerHistory.Visible = false
     G2L.GlobalHistory.Visible = false
@@ -373,8 +494,6 @@ local function AtualizarEstiloAbas()
         end
     end
 end
-
-local criarAbaPrivada -- Declaração antecipada
 
 local function SelecionarAba(nomeAba)
     OcultarTodasAsAbas()
@@ -428,8 +547,7 @@ end
 CriarBotaoAbaFixa("Servidor", "SERVER", 1)
 CriarBotaoAbaFixa("Global", "GLOBAL", 2)
 
--- CRIAR OU OBTER ABA PRIVADA DE UM JOGADOR
-criarAbaPrivada = function(targetUsername)
+local function criarAbaPrivada(targetUsername)
     if abasPrivadas[targetUsername] then
         return abasPrivadas[targetUsername]
     end
@@ -513,7 +631,79 @@ criarAbaPrivada = function(targetUsername)
     return abasPrivadas[targetUsername]
 end
 
--- DISPARAR AVISO TOAST DE MENSAGEM PRIVADA
+local function FecharAbaPrivada(targetUsername)
+    if abasPrivadas[targetUsername] then
+        abasPrivadas[targetUsername].Container:Destroy()
+        abasPrivadas[targetUsername].HistoryFrame:Destroy()
+        abasPrivadas[targetUsername] = nil
+        if abaAtual == targetUsername then
+            SelecionarAba(modoGlobal and "GLOBAL" or "SERVER")
+        end
+    end
+end
+
+-- LÓGICA DE APLICAR / REMOVER MUTE COMPLETO
+local function RedesenharListaMutados()
+    for _, child in pairs(MutedScroll:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+
+    for user, _ in pairs(jogadoresMutados) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 22)
+        btn.BackgroundTransparency = 1
+        btn.Text = "@" .. user
+        btn.Font = FONTE_PIXEL
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 12
+        btn.ZIndex = 32
+        btn.Parent = MutedScroll
+
+        btn.MouseButton1Click:Connect(function()
+            -- DESMUTAR JOGADOR
+            jogadoresMutados[user] = nil
+            
+            -- Exibe as mensagens dele novamente
+            if historicoMensagensInstancias[user] then
+                for _, msgBtn in ipairs(historicoMensagensInstancias[user]) do
+                    if msgBtn and msgBtn.Parent then
+                        msgBtn.Visible = true
+                    end
+                end
+            end
+
+            RedesenharListaMutados()
+        end)
+    end
+end
+
+local function SilenciarJogador(username)
+    if username == Player.Name then return end
+
+    jogadoresMutados[username] = true
+
+    -- Esconde todas as mensagens já enviadas por ele
+    if historicoMensagensInstancias[username] then
+        for _, msgBtn in ipairs(historicoMensagensInstancias[username]) do
+            if msgBtn and msgBtn.Parent then
+                msgBtn.Visible = false
+            end
+        end
+    end
+
+    -- Fecha o Chat PV se estiver aberto com ele
+    FecharAbaPrivada(username)
+
+    -- Se o target indicator estiver direcionado a ele, limpa
+    if destinatarioPrivado == username then
+        destinatarioPrivado = nil
+        if TargetIndicator then TargetIndicator.Visible = false end
+        AjustarAlturaHistoricos(false)
+    end
+
+    RedesenharListaMutados()
+end
+
 local function DispararToast(senderUsername, message)
     if jogadoresMutados[senderUsername] then return end
 
@@ -537,10 +727,8 @@ local function DispararToast(senderUsername, message)
 end
 
 ---------------------------------------------------------------------
--- CONTROLE DOS BOTÕES DA TOPBAR (ANIMAÇÃO E ALTERNÂNCIA DE MODOS)
+-- EVENTOS DE BOTÕES E FECHAMENTO AUTOMÁTICO DE MENUS
 ---------------------------------------------------------------------
-
--- MODO DE SELEÇÃO / COPIAR
 G2L.SelectBtn.MouseButton1Click:Connect(function()
     modoSelecaoAtivo = not modoSelecaoAtivo
     if modoSelecaoAtivo then
@@ -552,10 +740,14 @@ G2L.SelectBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- MODO MUTE PLAYER
 G2L.MutePlayerBtn.MouseButton1Click:Connect(function()
-    modoMutePlayerAtivo = not modoMutePlayerAtivo
-    if modoMutePlayerAtivo then
+    MutedListMenu.Visible = not MutedListMenu.Visible
+    if MutedListMenu.Visible then
+        ActionMenu.Visible = false
+        local mousePos = UserInputService:GetMouseLocation()
+        MutedListMenu.Position = UDim2.new(0, mousePos.X - 100, 0, mousePos.Y - 35)
+        RedesenharListaMutados()
+        
         G2L.MutePlayerBtn.Size = UDim2.new(0, 24, 0, 24)
         G2L.MutePlayerBtn.Position = UDim2.new(1, -88, 0.5, -12)
     else
@@ -564,7 +756,6 @@ G2L.MutePlayerBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- MODO TELA CHEIA / FOCO
 G2L.ModoFocoBtn.MouseButton1Click:Connect(function()
     modoFocoAtivo = not modoFocoAtivo
     
@@ -575,6 +766,9 @@ G2L.ModoFocoBtn.MouseButton1Click:Connect(function()
         G2L.TabBar.Visible = false
         G2L.TopDivider.Visible = false
         G2L.CenterSymbol.Visible = false
+        
+        -- Expande levemente a UI principal
+        G2L.Main.Size = SIZE_FOCO
     else
         G2L.ModoFocoBtn.Size = UDim2.new(0, 20, 0, 20)
         G2L.ModoFocoBtn.Position = UDim2.new(1, -114, 0.5, -10)
@@ -582,36 +776,74 @@ G2L.ModoFocoBtn.MouseButton1Click:Connect(function()
         G2L.TabBar.Visible = true
         G2L.TopDivider.Visible = true
         G2L.CenterSymbol.Visible = true
+        
+        -- Retorna ao tamanho padrão
+        G2L.Main.Size = SIZE_NORMAL
+    end
+    
+    -- Atualizar o tamanho do texto de todas as mensagens
+    for _, list in pairs(historicoMensagensInstancias) do
+        for _, btn in ipairs(list) do
+            if btn then
+                btn.TextSize = modoFocoAtivo and 13 or 15
+            end
+        end
     end
     
     AjustarAlturaHistoricos(false)
 end)
 
--- MUTE DE NOTIFICAÇÕES (SOM)
 G2L.MuteNotifBtn.MouseButton1Click:Connect(function()
     notificacaoSomAtiva = not notificacaoSomAtiva
-    
     if not notificacaoSomAtiva then
-        -- Quando MUTADO: expande o ícone
         G2L.MuteNotifBtn.Size = UDim2.new(0, 24, 0, 24)
         G2L.MuteNotifBtn.Position = UDim2.new(1, -144, 0.5, -12)
         G2L.MuteNotifBtn.ImageColor3 = Color3.fromRGB(255, 100, 100)
     else
-        -- Quando NORMAL (Som Ativo): tamanho padrão
         G2L.MuteNotifBtn.Size = UDim2.new(0, 20, 0, 20)
         G2L.MuteNotifBtn.Position = UDim2.new(1, -142, 0.5, -10)
         G2L.MuteNotifBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
     end
 end)
 
+-- FECHA OS POP-UPS AO CLICAR FORA
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local mousePos = input.Position
+        
+        if ActionMenu.Visible then
+            local pos = ActionMenu.AbsolutePosition
+            local size = ActionMenu.AbsoluteSize
+            if mousePos.X < pos.X or mousePos.X > pos.X + size.X or mousePos.Y < pos.Y or mousePos.Y > pos.Y + size.Y then
+                ActionMenu.Visible = false
+            end
+        end
+
+        if MutedListMenu.Visible then
+            local pos = MutedListMenu.AbsolutePosition
+            local size = MutedListMenu.AbsoluteSize
+            local btnPos = G2L.MutePlayerBtn.AbsolutePosition
+            local btnSize = G2L.MutePlayerBtn.AbsoluteSize
+
+            -- Garante que não feche ao clicar no próprio botão MutePlayer
+            local clickOnBtn = (mousePos.X >= btnPos.X and mousePos.X <= btnPos.X + btnSize.X and mousePos.Y >= btnPos.Y and mousePos.Y <= btnPos.Y + btnSize.Y)
+
+            if not clickOnBtn and (mousePos.X < pos.X or mousePos.X > pos.X + size.X or mousePos.Y < pos.Y or mousePos.Y > pos.Y + size.Y) then
+                MutedListMenu.Visible = false
+                G2L.MutePlayerBtn.Size = UDim2.new(0, 20, 0, 20)
+                G2L.MutePlayerBtn.Position = UDim2.new(1, -86, 0.5, -10)
+            end
+        end
+    end
+end)
+
 ---------------------------------------------------------------------
--- INDICADOR INFERIOR DE MENSAGEM DIRETA
+-- INDICADOR INFERIOR DE TARGET
 ---------------------------------------------------------------------
-local TargetIndicator = Instance.new("Frame")
+TargetIndicator = Instance.new("Frame")
 TargetIndicator.Size = UDim2.new(1, -16, 0, 20)
 TargetIndicator.Position = UDim2.new(0, 8, 1, -68)
 TargetIndicator.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-TargetIndicator.BackgroundTransparency = 0.05
 TargetIndicator.BorderSizePixel = 0
 TargetIndicator.Visible = false
 TargetIndicator.ZIndex = 7
@@ -653,7 +885,7 @@ CancelTargetBtn.MouseButton1Click:Connect(function()
     SelecionarAba(modoGlobal and "GLOBAL" or "SERVER")
 end)
 
--- ÁREA INFERIOR DE INPUT
+-- INPUT BOTTOM
 G2L.BottomArea = Instance.new("Frame")
 G2L.BottomArea.Size = UDim2.new(1, -16, 0, 38)
 G2L.BottomArea.Position = UDim2.new(0, 8, 1, -46)
@@ -690,7 +922,6 @@ G2L.SendBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 G2L.SendBtn.ZIndex = 7
 G2L.SendBtn.Parent = G2L.BottomArea
 
--- BUBBLE CHAT
 local function MostrarBubbleChat(username, message)
     if jogadoresMutados[username] then return end
     local targetPlayer = Players:FindFirstChild(username)
@@ -701,19 +932,19 @@ end
 
 -- ADICIONAR MENSAGEM
 local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mode, targetUser)
-    -- FILTRO DE MUTE PLAYER
-    if jogadoresMutados[username] and not isMe then
-        return
-    end
-
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -5, 0, 18)
     btn.BackgroundTransparency = 1
     btn.RichText = true
     btn.Font = FONTE_MENSAGENS
-    btn.TextSize = 15
+    btn.TextSize = modoFocoAtivo and 13 or 15
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.AutoButtonColor = false
+
+    -- Se o jogador já estiver mutado, esconde a mensagem
+    if jogadoresMutados[username] and not isMe then
+        btn.Visible = false
+    end
 
     local prefix = ""
     if isPrivate then
@@ -752,31 +983,49 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
 
     btn.Parent = targetContainer
 
-    -- CLIQUE PARA IR AO PV OU MUTAR PLAYER
+    -- Armazena no dicionário para podermos esconder/mostrar dinamicamente no mute
+    if not historicoMensagensInstancias[username] then
+        historicoMensagensInstancias[username] = {}
+    end
+    table.insert(historicoMensagensInstancias[username], btn)
+
+    -- CLIQUE NA MENSAGEM -> ABRE A MINI INTERFACE
     btn.MouseButton1Click:Connect(function()
         if username == Player.Name then return end
 
-        if modoMutePlayerAtivo then
-            -- AÇÃO DE SILENCIAR / DESILENCIAR
-            if jogadoresMutados[username] then
-                jogadoresMutados[username] = nil
-                print("Jogador " .. username .. " foi DESMUTADO.")
-            else
-                jogadoresMutados[username] = true
-                print("Jogador " .. username .. " foi MUTADO.")
-            end
-        elseif not modoSelecaoAtivo then
-            -- AÇÃO PADRÃO: ABRIR PV
-            local data = criarAbaPrivada(username)
-            data.Container.Visible = true
-            SelecionarAba(username)
-            TargetText.Text = "Mensagem Direta para: @" .. username
-            TargetIndicator.Visible = true
-            AjustarAlturaHistoricos(true)
+        if not modoSelecaoAtivo then
+            local mousePos = UserInputService:GetMouseLocation()
+            ActionMenu.Position = UDim2.new(0, mousePos.X - 100, 0, mousePos.Y - 40)
+            ActionMenu.Visible = true
+            MutedListMenu.Visible = false
+
+            -- Conexão do Botão PV
+            local pvConn, muteConn
+            pvConn = ActionPvBtn.MouseButton1Click:Connect(function()
+                ActionMenu.Visible = false
+                pvConn:Disconnect()
+                if muteConn then muteConn:Disconnect() end
+
+                local data = criarAbaPrivada(username)
+                data.Container.Visible = true
+                SelecionarAba(username)
+                TargetText.Text = "Mensagem Direta para: @" .. username
+                TargetIndicator.Visible = true
+                AjustarAlturaHistoricos(true)
+            end)
+
+            -- Conexão do Botão Silenciar
+            muteConn = ActionMuteBtn.MouseButton1Click:Connect(function()
+                ActionMenu.Visible = false
+                muteConn:Disconnect()
+                if pvConn then pvConn:Disconnect() end
+
+                SilenciarJogador(username)
+            end)
         end
     end)
 
-    -- MODO DE SELEÇÃO / COPIAR (HOLD)
+    -- COPIAR TEXTO (HOLD)
     local pressTimer
     local isHolding = false
 
@@ -806,7 +1055,7 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
         targetContainer.CanvasPosition = Vector2.new(0, targetContainer.UIListLayout.AbsoluteContentSize.Y)
     end
 
-    if not G2L.Main.Visible and not isMe then
+    if not G2L.Main.Visible and not isMe and not jogadoresMutados[username] then
         G2L.ToggleButton.Image = ID_NOTIFICACAO
         if notificacaoSomAtiva then
             NotificationSound:Play()
@@ -816,7 +1065,7 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
     MostrarBubbleChat(username, msg)
 end
 
--- CONEXÃO E FILTRAGEM WEBSOCKET
+-- WEBSOCKET
 local socket
 local running = true
 
@@ -839,19 +1088,10 @@ local function ConnectWebSocket()
                 local isMe = (data.username == Player.Name)
                 local isPrivate = (data.target ~= nil and data.target ~= "")
 
-                -- Filtro de Players Silenciados no backend do script
-                if jogadoresMutados[data.username] and not isMe then
-                    return
-                end
-
                 if isPrivate then
-                    if data.target ~= Player.Name and not isMe then 
-                        return 
-                    end
+                    if data.target ~= Player.Name and not isMe then return end
                 elseif data.mode == "SERVER" then
-                    if data.serverId ~= CURRENT_SERVER_ID then 
-                        return 
-                    end
+                    if data.serverId ~= CURRENT_SERVER_ID then return end
                 end
 
                 local dName = data.nickname or data.username
@@ -875,7 +1115,6 @@ local function ConnectWebSocket()
     end
 end
 
--- ENVIAR MENSAGEM
 local function EnviarMensagem()
     if socket and G2L.Input.Text ~= "" then
         local modoEnvio = (abaAtual == "GLOBAL" or (abaAtual ~= "SERVER" and modoGlobal)) and "GLOBAL" or "SERVER"
@@ -890,7 +1129,7 @@ local function EnviarMensagem()
         }
 
         local success, err = pcall(function()
-            socket:Send(HttpService:JSONEncode(payload))
+            socket:Send(HttpService:JSONDecode(payload))
         end)
 
         if not success then 
@@ -905,7 +1144,6 @@ end
 G2L.SendBtn.MouseButton1Click:Connect(EnviarMensagem)
 G2L.Input.FocusLost:Connect(function(enter) if enter then EnviarMensagem() end end)
 
--- FUNÇÃO DE ARRASTE (DRAG)
 local function MakeDraggable(gui)
     local dragging, dragInput, dragStart, startPos
     gui.InputBegan:Connect(function(input)
@@ -951,9 +1189,7 @@ G2L.CloseBtn.MouseButton1Click:Connect(function()
     print("Script Encerrado.")
 end)
 
--- Inicializa estilo padrão das abas
 AtualizarEstiloAbas()
-
 task.spawn(ConnectWebSocket)
 
 ServerLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
