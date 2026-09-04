@@ -905,8 +905,7 @@ SendImageBtn.MouseButton1Click:Connect(function()
             message = formattedId,
             mode = modoEnvio,
             serverId = CURRENT_SERVER_ID,
-            target = destinatarioPrivado,
-            isImage = true
+            target = destinatarioPrivado
         }
 
         pcall(function()
@@ -1171,22 +1170,9 @@ local BottomCorner = Instance.new("UICorner")
 BottomCorner.CornerRadius = UDim.new(0, 8)
 BottomCorner.Parent = G2L.BottomArea
 
-G2L.OpenGalleryBtn = Instance.new("ImageButton")
-G2L.OpenGalleryBtn.Name = "OpenGalleryBtn"
-G2L.OpenGalleryBtn.Size = UDim2.new(0, 20, 0, 20)
-G2L.OpenGalleryBtn.Position = UDim2.new(0, 10, 0.5, -10)
-G2L.OpenGalleryBtn.BackgroundTransparency = 1
-G2L.OpenGalleryBtn.Image = ID_BOTAO_PASTA
-G2L.OpenGalleryBtn.ZIndex = 7
-G2L.OpenGalleryBtn.Parent = G2L.BottomArea
-
-G2L.OpenGalleryBtn.MouseButton1Click:Connect(function()
-    GalleryPanel.Visible = not GalleryPanel.Visible
-end)
-
 G2L.Input = Instance.new("TextBox")
-G2L.Input.Size = UDim2.new(1, -75, 1, 0)
-G2L.Input.Position = UDim2.new(0, 38, 0, 0)
+G2L.Input.Size = UDim2.new(1, -100, 1, 0)
+G2L.Input.Position = UDim2.new(0, 12, 0, 0)
 G2L.Input.BackgroundTransparency = 1
 G2L.Input.Text = ""
 G2L.Input.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1197,6 +1183,19 @@ G2L.Input.TextSize = 14
 G2L.Input.Font = FONTE_PIXEL
 G2L.Input.ZIndex = 7
 G2L.Input.Parent = G2L.BottomArea
+
+G2L.OpenGalleryBtn = Instance.new("ImageButton")
+G2L.OpenGalleryBtn.Name = "OpenGalleryBtn"
+G2L.OpenGalleryBtn.Size = UDim2.new(0, 24, 0, 24)
+G2L.OpenGalleryBtn.Position = UDim2.new(1, -62, 0.5, -12)
+G2L.OpenGalleryBtn.BackgroundTransparency = 1
+G2L.OpenGalleryBtn.Image = ID_BOTAO_PASTA
+G2L.OpenGalleryBtn.ZIndex = 7
+G2L.OpenGalleryBtn.Parent = G2L.BottomArea
+
+G2L.OpenGalleryBtn.MouseButton1Click:Connect(function()
+    GalleryPanel.Visible = not GalleryPanel.Visible
+end)
 
 G2L.SendBtn = Instance.new("ImageButton")
 G2L.SendBtn.Size = UDim2.new(0, 20, 0, 20)
@@ -1217,7 +1216,7 @@ end
 
 -- ADICIONAR MENSAGEM
 local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mode, targetUser)
-    local isImg = string.match(msg, "^rbxassetid://") ~= nil
+    local isImg = string.match(msg, "rbxassetid://") ~= nil or string.match(msg, "^%d+$") ~= nil
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -5, 0, isImg and 130 or 18)
     btn.BackgroundTransparency = 1
@@ -1241,12 +1240,15 @@ local function AdicionarMensagem(username, displayname, msg, isMe, isPrivate, mo
     local nameColor = isMe and "rgb(255,110,110)" or "rgb(180,130,255)"
 
     if isImg then
+        local cleanAssetId = string.match(msg, "%d+")
+        local imageUrl = "rbxassetid://" .. cleanAssetId
+        
         btn.Text = string.format("%s<font color='%s'>%s:</font>", prefix, nameColor, displayname)
         
         local imgContainer = Instance.new("ImageLabel")
         imgContainer.Size = UDim2.new(0, 110, 0, 110)
         imgContainer.Position = UDim2.new(0, 0, 0, 20)
-        imgContainer.Image = msg
+        imgContainer.Image = imageUrl
         imgContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
         imgContainer.BorderSizePixel = 0
         imgContainer.ZIndex = 6
