@@ -51,9 +51,9 @@ local botoesAbasFixas = {}
 local jogadoresMutados = {} -- { [username] = true }
 local historicoMensagensInstancias = {} -- Guarda referências das UIs de mensagem enviadas por cada player
 
--- TAMANHOS PADRÃO DA INTERFACE
+-- TAMANHOS PADRÃO DA INTERFACE (Ligeiramente aumentado no modo foco)
 local SIZE_NORMAL = UDim2.new(0, 420, 0, 270)
-local SIZE_FOCO = UDim2.new(0, 460, 0, 300)
+local SIZE_FOCO = UDim2.new(0, 480, 0, 320)
 
 -- UI PRINCIPAL
 G2L.ScreenGui = Instance.new("ScreenGui")
@@ -223,7 +223,7 @@ G2L.ServerHistory.Visible = true
 G2L.ServerHistory.Parent = G2L.Main
 
 local ServerLayout = Instance.new("UIListLayout")
-ServerLayout.Padding = UDim.new(0, 3)
+ServerLayout.Padding = UDim.new(0, 1) -- Espaçamento reduzido
 ServerLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ServerLayout.Parent = G2L.ServerHistory
 
@@ -240,7 +240,7 @@ G2L.GlobalHistory.Visible = false
 G2L.GlobalHistory.Parent = G2L.Main
 
 local GlobalLayout = Instance.new("UIListLayout")
-GlobalLayout.Padding = UDim.new(0, 3)
+GlobalLayout.Padding = UDim.new(0, 1) -- Espaçamento reduzido
 GlobalLayout.SortOrder = Enum.SortOrder.LayoutOrder
 GlobalLayout.Parent = G2L.GlobalHistory
 
@@ -280,6 +280,7 @@ local ActionPvBtn = Instance.new("TextButton")
 ActionPvBtn.Size = UDim2.new(0.42, 0, 0, 30)
 ActionPvBtn.Position = UDim2.new(0.06, 0, 0, 40)
 ActionPvBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ActionPvBtn.BorderSizePixel = 0
 ActionPvBtn.Text = "CHAT PV"
 ActionPvBtn.Font = FONTE_PIXEL
 ActionPvBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -291,18 +292,14 @@ local ActionPvCorner = Instance.new("UICorner")
 ActionPvCorner.CornerRadius = UDim.new(0, 4)
 ActionPvCorner.Parent = ActionPvBtn
 
-local ActionPvStroke = Instance.new("UIStroke")
-ActionPvStroke.Color = Color3.fromRGB(255, 255, 255)
-ActionPvStroke.Thickness = 1
-ActionPvStroke.Parent = ActionPvBtn
-
 local ActionMuteBtn = Instance.new("TextButton")
 ActionMuteBtn.Size = UDim2.new(0.42, 0, 0, 30)
 ActionMuteBtn.Position = UDim2.new(0.52, 0, 0, 40)
 ActionMuteBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ActionMuteBtn.BorderSizePixel = 0
 ActionMuteBtn.Text = "SILENCIAR"
 ActionMuteBtn.Font = FONTE_PIXEL
-ActionMuteBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ActionMuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255) -- Texto alterado para branco puro
 ActionMuteBtn.TextSize = 11
 ActionMuteBtn.ZIndex = 31
 ActionMuteBtn.Parent = ActionMenu
@@ -310,11 +307,6 @@ ActionMuteBtn.Parent = ActionMenu
 local ActionMuteCorner = Instance.new("UICorner")
 ActionMuteCorner.CornerRadius = UDim.new(0, 4)
 ActionMuteCorner.Parent = ActionMuteBtn
-
-local ActionMuteStroke = Instance.new("UIStroke")
-ActionMuteStroke.Color = Color3.fromRGB(255, 255, 255)
-ActionMuteStroke.Thickness = 1
-ActionMuteStroke.Parent = ActionMuteBtn
 
 ---------------------------------------------------------------------
 -- MINI INTERFACE: LISTA DE PLAYERS MUTADOS
@@ -565,7 +557,7 @@ local function criarAbaPrivada(targetUsername)
     historyFrame.Parent = G2L.Main
 
     local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 3)
+    layout.Padding = UDim.new(0, 1) -- Espaçamento reduzido
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = historyFrame
 
@@ -1121,7 +1113,6 @@ local function EnviarMensagem()
         }
 
         local success, err = pcall(function()
-            -- CORRIGIDO: alterado JSONDecode para JSONEncode
             socket:Send(HttpService:JSONEncode(payload))
         end)
 
